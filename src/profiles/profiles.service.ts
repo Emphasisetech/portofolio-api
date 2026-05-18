@@ -21,7 +21,11 @@ export class ProfilesService {
   }
 
   async findByUsername(username: string): Promise<Profile> {
-    const user = await this.userModel.findOne({ username }).exec();
+    const user = await this.userModel.findOneAndUpdate(
+      { username },
+      { $inc: { views: 1 } },
+      { new: true }
+    ).exec();
     if (!user) {
       throw new NotFoundException('User not found');
     }
