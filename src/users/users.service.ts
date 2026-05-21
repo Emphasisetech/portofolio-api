@@ -33,7 +33,15 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userModel.findOne({ email }).exec();
+    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  }
+
+  async findByUsernameOrEmail(identifier: string): Promise<User | null> {
+    const trimmed = identifier.trim();
+    if (trimmed.includes('@')) {
+      return this.findByEmail(trimmed.toLowerCase());
+    }
+    return this.findByUsername(trimmed);
   }
 
   async findById(id: string): Promise<User | null> {

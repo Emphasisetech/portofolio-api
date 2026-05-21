@@ -14,6 +14,12 @@ export class UsersController {
       throw new NotFoundException('User not found');
     }
     const { password, ...result } = user.toObject();
-    return result;
+    return {
+      id: result._id?.toString(),
+      username: result.username,
+      email: result.email,
+      role: result.role,
+      views: result.views ?? 0,
+    };
   }
 }
