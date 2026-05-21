@@ -74,6 +74,7 @@ export class ProfilesService {
         userId: new Types.ObjectId(userId),
         isDefault: true,
         title: 'My Resume',
+        templateId: 'resume-1',
         layout: DEFAULT_SECTIONS,
         profileKind: 'resume',
       });
@@ -141,7 +142,7 @@ export class ProfilesService {
       education: copied.education,
       skills: copied.skills,
       projects: copied.projects,
-      templateId: copied.templateId,
+      templateId: copied.templateId || 'resume-1',
       layout: copied.layout,
       profileKind: copied.profileKind,
     });
