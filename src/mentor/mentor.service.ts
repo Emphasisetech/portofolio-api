@@ -6,7 +6,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import {
+  GoogleGenerativeAI,
+  type Content,
+} from '@google/generative-ai';
 import { Response } from 'express';
 import { ChatSession } from './schemas/chat.schema';
 import { ProfilesService } from '../profiles/profiles.service';
@@ -18,27 +21,62 @@ import {
 
 @Injectable()
 export class MentorService {
-  private openai: OpenAI | null = null;
-
   constructor(
     @InjectModel(ChatSession.name)
     private chatModel: Model<ChatSession>,
     private profilesService: ProfilesService,
     private configService: ConfigService,
-  ) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (apiKey) {
-      this.openai = new OpenAI({ apiKey });
-    }
-  }
+  ) {}
 
-  private ensureOpenAI(): OpenAI {
-    if (!this.openai) {
+  private getApiKey(): string {
+    const apiKey =
+      this.configService.get<string>('GOOGLE_AI_API_KEY') ||
+      this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
       throw new ServiceUnavailableException(
-        'OpenAI is not configured. Add OPENAI_API_KEY to your API .env file.',
+        'Google AI is not configured. Add GOOGLE_AI_API_KEY from Google AI Studio to your API .env file.',
       );
     }
-    return this.openai;
+    return apiKey;
+  }
+
+  /** Maps retired model IDs to current Google AI Studio names. */
+  private static readonly MODEL_ALIASES: Record<string, string> = {
+    'gemini-1.5-flash': 'gemini-2.0-flash',
+    'gemini-1.5-flash-latest': 'gemini-2.0-flash',
+    'gemini-1.5-flash-8b': 'gemini-2.0-flash-lite',
+    'gemini-1.5-pro': 'gemini-2.0-flash',
+    'gemini-1.5-pro-latest': 'gemini-2.0-flash',
+    'gemini-pro': 'gemini-2.0-flash',
+  };
+
+  private getModelName(): string {
+    const configured =
+      this.configService.get<string>('GOOGLE_AI_MODEL') ||
+      this.configService.get<string>('GEMINI_MODEL') ||
+      'gemini-2.0-flash';
+    return MentorService.MODEL_ALIASES[configured] || configured;
+  }
+
+  private createGenerativeModel(systemPrompt: string) {
+    const genAI = new GoogleGenerativeAI(this.getApiKey());
+    return genAI.getGenerativeModel({
+      model: this.getModelName(),
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      },
+    });
+  }
+
+  private buildGeminiHistory(
+    history: { role: 'user' | 'assistant'; content: string }[],
+  ): Content[] {
+    return history.slice(-20).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
   }
 
   private async getProfileContext(userId: string): Promise<string> {
@@ -86,21 +124,6 @@ export class MentorService {
     return { success: true };
   }
 
-  private buildOpenAIMessages(
-    systemPrompt: string,
-    history: { role: 'user' | 'assistant'; content: string }[],
-    userMessage: string,
-  ) {
-    return [
-      { role: 'system' as const, content: systemPrompt },
-      ...history.slice(-20).map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      { role: 'user' as const, content: userMessage },
-    ];
-  }
-
   async streamMessage(
     chatId: string,
     userId: string,
@@ -108,7 +131,6 @@ export class MentorService {
     res: Response,
   ) {
     const chat = await this.getChat(chatId, userId);
-    const openai = this.ensureOpenAI();
     const profileContext = await this.getProfileContext(userId);
     const systemPrompt = buildMentorSystemPrompt(profileContext);
 
@@ -125,7 +147,10 @@ export class MentorService {
       createdAt: new Date(),
     });
 
-    if (chat.title === 'New Chat' && chat.messages.filter((m) => m.role === 'user').length === 1) {
+    if (
+      chat.title === 'New Chat' &&
+      chat.messages.filter((m) => m.role === 'user').length === 1
+    ) {
       chat.title = deriveChatTitle(userMessage);
     }
 
@@ -134,31 +159,29 @@ export class MentorService {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
-    const model =
-      this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
+    const model = this.createGenerativeModel(systemPrompt);
+    const geminiChat = model.startChat({
+      history: this.buildGeminiHistory(history),
+    });
 
     let fullAssistant = '';
 
     try {
-      const stream = await openai.chat.completions.create({
-        model,
-        messages: this.buildOpenAIMessages(systemPrompt, history, userMessage),
-        stream: true,
-        temperature: 0.7,
-        max_tokens: 2048,
-      });
+      const result = await geminiChat.sendMessageStream(userMessage);
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || '';
+      for await (const chunk of result.stream) {
+        const delta = chunk.text();
         if (delta) {
           fullAssistant += delta;
-          res.write(`data: ${JSON.stringify({ type: 'token', content: delta })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ type: 'token', content: delta })}\n\n`,
+          );
         }
       }
 
       chat.messages.push({
         role: 'assistant',
-        content: fullAssistant,
+        content: fullAssistant || 'I could not generate a response.',
         createdAt: new Date(),
       });
       await chat.save();
@@ -172,8 +195,7 @@ export class MentorService {
       );
       res.end();
     } catch (err: any) {
-      const msg =
-        err?.message || 'Failed to generate AI response';
+      const msg = err?.message || 'Failed to generate AI response';
       res.write(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`);
       res.end();
     }
@@ -181,7 +203,6 @@ export class MentorService {
 
   async sendMessage(chatId: string, userId: string, userMessage: string) {
     const chat = await this.getChat(chatId, userId);
-    const openai = this.ensureOpenAI();
     const profileContext = await this.getProfileContext(userId);
     const systemPrompt = buildMentorSystemPrompt(profileContext);
 
@@ -192,18 +213,14 @@ export class MentorService {
         content: m.content,
       }));
 
-    const model =
-      this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
-
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: this.buildOpenAIMessages(systemPrompt, history, userMessage),
-      temperature: 0.7,
-      max_tokens: 2048,
+    const model = this.createGenerativeModel(systemPrompt);
+    const geminiChat = model.startChat({
+      history: this.buildGeminiHistory(history),
     });
 
+    const result = await geminiChat.sendMessage(userMessage);
     const assistantContent =
-      completion.choices[0]?.message?.content?.trim() ||
+      result.response.text()?.trim() ||
       'I could not generate a response. Please try again.';
 
     chat.messages.push(
