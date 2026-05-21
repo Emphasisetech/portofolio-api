@@ -40,15 +40,22 @@ export function buildPublicSlug(username: string, title: string): string {
   return `${username}-${slugifyTitle(title)}`;
 }
 
+export function deepCloneLayout(layout: any) {
+  if (!layout?.length) {
+    return JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+  }
+  return JSON.parse(JSON.stringify(layout));
+}
+
 export function extractProfileContent(profile: any) {
   return {
-    personalInfo: profile.personalInfo || {},
-    experience: profile.experience || [],
-    education: profile.education || [],
-    skills: profile.skills || [],
-    projects: profile.projects || [],
-    templateId: profile.templateId || 'minimal',
-    layout: profile.layout?.length ? profile.layout : DEFAULT_SECTIONS,
+    personalInfo: JSON.parse(JSON.stringify(profile.personalInfo || {})),
+    experience: JSON.parse(JSON.stringify(profile.experience || [])),
+    education: JSON.parse(JSON.stringify(profile.education || [])),
+    skills: JSON.parse(JSON.stringify(profile.skills || [])),
+    projects: JSON.parse(JSON.stringify(profile.projects || [])),
+    templateId: profile.templateId || 'resume-1',
+    layout: deepCloneLayout(profile.layout),
     profileKind: profile.profileKind || getProfileKind(profile.templateId),
   };
 }
