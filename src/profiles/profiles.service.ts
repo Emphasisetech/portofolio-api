@@ -9,6 +9,7 @@ import {
   getProfileKind,
   buildPublicSlug,
 } from './profile.utils';
+import type { ParsedResumeData } from './resume-import.types';
 
 @Injectable()
 export class ProfilesService {
@@ -145,6 +146,37 @@ export class ProfilesService {
       templateId: copied.templateId || 'resume-1',
       layout: copied.layout,
       profileKind: copied.profileKind,
+    });
+    await this.assignPublicSlug(profile, username);
+    return profile.save();
+  }
+
+  /** New profile filled from uploaded resume — does not copy initial/default data. */
+  async createProfileFromImport(
+    userId: string,
+    title: string,
+    data: ParsedResumeData,
+  ): Promise<Profile> {
+    const username = await this.getUsername(userId);
+    const profileTitle =
+      title?.trim() ||
+      data.suggestedTitle?.trim() ||
+      data.personalInfo?.fullName?.trim() ||
+      'Imported Resume';
+
+    const profile = new this.profileModel({
+      userId: new Types.ObjectId(userId),
+      title: profileTitle,
+      isDefault: false,
+      isPublished: false,
+      personalInfo: data.personalInfo || {},
+      experience: data.experience || [],
+      education: data.education || [],
+      skills: data.skills || [],
+      projects: data.projects || [],
+      templateId: 'resume-1',
+      layout: JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),
+      profileKind: 'resume',
     });
     await this.assignPublicSlug(profile, username);
     return profile.save();

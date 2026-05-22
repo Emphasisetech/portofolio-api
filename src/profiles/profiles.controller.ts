@@ -1,10 +1,31 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Param,
+  UploadedFile,
+  UseInterceptors,
+  HttpException,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
+import { ResumeImportService } from './resume-import.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('profiles')
 export class ProfilesController {
-  constructor(private profilesService: ProfilesService) {}
+  private readonly logger = new Logger(ProfilesController.name);
+
+  constructor(
+    private profilesService: ProfilesService,
+    private resumeImportService: ResumeImportService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -22,6 +43,37 @@ export class ProfilesController {
   @Post('create')
   async createProfile(@Request() req, @Body('title') title: string) {
     return this.profilesService.createProfile(req.user.userId, title);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('import-resume')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  async importResume(
+    @Request() req: { user: { userId: string } },
+    @UploadedFile() file: Express.Multer.File,
+    @Body('title') title?: string,
+  ) {
+    try {
+      const validFile = this.resumeImportService.validateFile(file);
+      const text = await this.resumeImportService.extractText(validFile);
+      const parsed = await this.resumeImportService.parseResumeText(text);
+      return this.profilesService.createProfileFromImport(
+        req.user.userId,
+        title || '',
+        parsed,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      this.logger.error('import-resume failed', error);
+      const message =
+        error instanceof Error ? error.message : 'Resume import failed';
+      throw new InternalServerErrorException(message);
+    }
   }
 
   @Get('public/slug/:slug')

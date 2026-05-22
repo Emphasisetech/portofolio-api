@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
+import { ResumeImportService } from './resume-import.service';
 import { Profile, ProfileSchema } from './schemas/profile.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 
@@ -13,7 +14,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
     ]),
   ],
   controllers: [ProfilesController],
-  providers: [ProfilesService],
+  providers: [ProfilesService, ResumeImportService],
   exports: [ProfilesService],
 })
 export class ProfilesModule {}

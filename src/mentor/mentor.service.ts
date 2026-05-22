@@ -42,19 +42,21 @@ export class MentorService {
 
   /** Maps retired model IDs to current Google AI Studio names. */
   private static readonly MODEL_ALIASES: Record<string, string> = {
-    'gemini-1.5-flash': 'gemini-2.0-flash',
-    'gemini-1.5-flash-latest': 'gemini-2.0-flash',
-    'gemini-1.5-flash-8b': 'gemini-2.0-flash-lite',
-    'gemini-1.5-pro': 'gemini-2.0-flash',
-    'gemini-1.5-pro-latest': 'gemini-2.0-flash',
-    'gemini-pro': 'gemini-2.0-flash',
+    'gemini-1.5-flash': 'gemini-2.5-flash',
+    'gemini-1.5-flash-latest': 'gemini-2.5-flash',
+    'gemini-1.5-flash-8b': 'gemini-2.5-flash',
+    'gemini-1.5-pro': 'gemini-2.5-flash',
+    'gemini-1.5-pro-latest': 'gemini-2.5-flash',
+    'gemini-pro': 'gemini-2.5-flash',
+    'gemini-2.0-flash': 'gemini-2.5-flash',
+    'gemini-2.0-flash-lite': 'gemini-2.5-flash',
   };
 
   private getModelName(): string {
     const configured =
       this.configService.get<string>('GOOGLE_AI_MODEL') ||
       this.configService.get<string>('GEMINI_MODEL') ||
-      'gemini-2.0-flash';
+      'gemini-2.5-flash';
     return MentorService.MODEL_ALIASES[configured] || configured;
   }
 
