@@ -10,6 +10,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { TemplatesModule } from './templates/templates.module';
 import { AdminModule } from './admin/admin.module';
 import { MentorModule } from './mentor/mentor.module';
+import { PlansModule } from './plans/plans.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MentorModule } from './mentor/mentor.module';
     TemplatesModule,
     AdminModule,
     MentorModule,
+    PlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

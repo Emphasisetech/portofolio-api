@@ -10,12 +10,14 @@ import {
   buildPublicSlug,
 } from './profile.utils';
 import type { ParsedResumeData } from './resume-import.types';
+import { PlansService } from '../plans/plans.service';
 
 @Injectable()
 export class ProfilesService {
   constructor(
     @InjectModel(Profile.name) private profileModel: Model<Profile>,
     @InjectModel(User.name) private userModel: Model<User>,
+    private plansService: PlansService,
   ) {}
 
   private async getUsername(userId: string): Promise<string> {
@@ -120,6 +122,8 @@ export class ProfilesService {
   async createProfile(userId: string, title: string): Promise<Profile> {
     const username = await this.getUsername(userId);
     const source = await this.getSourceProfileForCopy(userId);
+    const kind = source?.profileKind || getProfileKind(source?.templateId) || 'resume';
+    await this.plansService.assertCanAddProfile(userId, kind);
     const copied = source
       ? extractProfileContent(source)
       : {
@@ -157,6 +161,8 @@ export class ProfilesService {
     title: string,
     data: ParsedResumeData,
   ): Promise<Profile> {
+    await this.plansService.assertFeature(userId, 'resumeImport');
+    await this.plansService.assertCanAddProfile(userId, 'resume');
     const username = await this.getUsername(userId);
     const profileTitle =
       title?.trim() ||
@@ -235,6 +241,16 @@ export class ProfilesService {
   }
 
   async update(profileId: string, userId: string, updateData: any): Promise<Profile | null> {
+    if (updateData.templateId) {
+      await this.plansService.assertTemplateAllowed(
+        userId,
+        updateData.templateId,
+        profileId,
+      );
+      const newKind = getProfileKind(updateData.templateId);
+      await this.plansService.assertCanSwitchToKind(userId, profileId, newKind);
+    }
+
     if (updateData.isDefault === true) {
       await this.profileModel
         .updateMany(

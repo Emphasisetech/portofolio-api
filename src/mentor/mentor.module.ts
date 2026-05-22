@@ -4,6 +4,7 @@ import { MentorController } from './mentor.controller';
 import { MentorService } from './mentor.service';
 import { ChatSession, ChatSessionSchema } from './schemas/chat.schema';
 import { ProfilesModule } from '../profiles/profiles.module';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { ProfilesModule } from '../profiles/profiles.module';
       { name: ChatSession.name, schema: ChatSessionSchema },
     ]),
     ProfilesModule,
+    PlansModule,
   ],
   controllers: [MentorController],
   providers: [MentorService],

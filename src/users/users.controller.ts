@@ -20,6 +20,7 @@ export class UsersController {
       email: result.email,
       role: result.role,
       views: result.views ?? 0,
+      plan: result.plan || 'FREE',
     };
   }
 }

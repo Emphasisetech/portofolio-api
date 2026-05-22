@@ -38,6 +38,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         views: user.views || 0,
+        plan: user.plan || 'FREE',
       },
     };
   }

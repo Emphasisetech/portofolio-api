@@ -18,6 +18,7 @@ import {
   deriveChatTitle,
   summarizeProfileForContext,
 } from './mentor.context';
+import { PlansService } from '../plans/plans.service';
 
 @Injectable()
 export class MentorService {
@@ -26,7 +27,12 @@ export class MentorService {
     private chatModel: Model<ChatSession>,
     private profilesService: ProfilesService,
     private configService: ConfigService,
+    private plansService: PlansService,
   ) {}
+
+  private async ensureMentorAccess(userId: string): Promise<void> {
+    await this.plansService.assertFeature(userId, 'aiMentor');
+  }
 
   private getApiKey(): string {
     const apiKey =
@@ -91,6 +97,7 @@ export class MentorService {
   }
 
   async listChats(userId: string) {
+    await this.ensureMentorAccess(userId);
     return this.chatModel
       .find({ userId: new Types.ObjectId(userId) })
       .sort({ updatedAt: -1 })
@@ -100,6 +107,7 @@ export class MentorService {
   }
 
   async createChat(userId: string) {
+    await this.ensureMentorAccess(userId);
     const chat = new this.chatModel({
       userId: new Types.ObjectId(userId),
       title: 'New Chat',
@@ -109,6 +117,7 @@ export class MentorService {
   }
 
   async getChat(chatId: string, userId: string) {
+    await this.ensureMentorAccess(userId);
     const chat = await this.chatModel.findOne({
       _id: new Types.ObjectId(chatId),
       userId: new Types.ObjectId(userId),
@@ -118,6 +127,7 @@ export class MentorService {
   }
 
   async deleteChat(chatId: string, userId: string) {
+    await this.ensureMentorAccess(userId);
     const result = await this.chatModel.deleteOne({
       _id: new Types.ObjectId(chatId),
       userId: new Types.ObjectId(userId),
@@ -132,6 +142,7 @@ export class MentorService {
     userMessage: string,
     res: Response,
   ) {
+    await this.ensureMentorAccess(userId);
     const chat = await this.getChat(chatId, userId);
     const profileContext = await this.getProfileContext(userId);
     const systemPrompt = buildMentorSystemPrompt(profileContext);

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { SubscriptionPlan } from '../../plans/plan.types';
 
 export enum UserRole {
   USER = 'USER',
@@ -22,6 +23,9 @@ export class User extends Document {
 
   @Prop({ default: 0 })
   views: number;
+
+  @Prop({ enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
+  plan: SubscriptionPlan;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

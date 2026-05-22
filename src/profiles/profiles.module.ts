@@ -5,6 +5,7 @@ import { ProfilesService } from './profiles.service';
 import { ResumeImportService } from './resume-import.service';
 import { Profile, ProfileSchema } from './schemas/profile.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
       { name: Profile.name, schema: ProfileSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    PlansModule,
   ],
   controllers: [ProfilesController],
   providers: [ProfilesService, ResumeImportService],
