@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PlansService } from './plans.service';
 import { PayPalService } from './paypal.service';
+import { RazorpayService } from './razorpay.service';
 import { SubscriptionPlan } from './plan.types';
 import { normalizePlan } from './plans.constants';
 
@@ -21,6 +22,7 @@ export class PlansController {
     private plansService: PlansService,
     private configService: ConfigService,
     private paypalService: PayPalService,
+    private razorpayService: RazorpayService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -58,6 +60,49 @@ export class PlansController {
     await this.plansService.setUserPlan(req.user.userId, normalized, {
       paypalSubscriptionId: subscription.id,
       paypalSubscriptionStatus: subscription.status,
+    });
+
+    return this.plansService.getSubscription(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('razorpay/order')
+  createRazorpayOrder(
+    @Request() req: { user: { userId: string } },
+    @Body('plan') plan: string,
+  ) {
+    const normalized = normalizePlan(plan);
+    if (normalized === SubscriptionPlan.FREE) {
+      throw new ForbiddenException('Choose a paid plan to start checkout.');
+    }
+    return this.razorpayService.createOrder(req.user.userId, normalized);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('razorpay/confirm')
+  async confirmRazorpayPayment(
+    @Request() req: { user: { userId: string } },
+    @Body('plan') plan: string,
+    @Body('razorpay_order_id') razorpayOrderId: string,
+    @Body('razorpay_payment_id') razorpayPaymentId: string,
+    @Body('razorpay_signature') razorpaySignature: string,
+  ) {
+    const normalized = normalizePlan(plan);
+    if (normalized === SubscriptionPlan.FREE) {
+      throw new ForbiddenException('Invalid paid plan.');
+    }
+
+    await this.razorpayService.verifyPayment({
+      expectedPlan: normalized,
+      userId: req.user.userId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    });
+    await this.plansService.setUserPlan(req.user.userId, normalized, {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpayPaymentStatus: 'paid',
     });
 
     return this.plansService.getSubscription(req.user.userId);

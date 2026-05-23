@@ -32,6 +32,15 @@ export class User extends Document {
 
   @Prop()
   paypalSubscriptionStatus?: string;
+
+  @Prop()
+  razorpayOrderId?: string;
+
+  @Prop()
+  razorpayPaymentId?: string;
+
+  @Prop()
+  razorpayPaymentStatus?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -160,7 +160,13 @@ export class PlansService {
   async setUserPlan(
     userId: string,
     plan: SubscriptionPlan,
-    billing?: { paypalSubscriptionId?: string; paypalSubscriptionStatus?: string },
+    billing?: {
+      paypalSubscriptionId?: string;
+      paypalSubscriptionStatus?: string;
+      razorpayOrderId?: string;
+      razorpayPaymentId?: string;
+      razorpayPaymentStatus?: string;
+    },
   ): Promise<User> {
     const user = await this.userModel
       .findByIdAndUpdate(userId, { plan, ...(billing || {}) }, { new: true })

@@ -5,6 +5,7 @@ import { Profile, ProfileSchema } from '../profiles/schemas/profile.schema';
 import { PlansService } from './plans.service';
 import { PlansController } from './plans.controller';
 import { PayPalService } from './paypal.service';
+import { RazorpayService } from './razorpay.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { PayPalService } from './paypal.service';
     ]),
   ],
   controllers: [PlansController],
-  providers: [PlansService, PayPalService],
+  providers: [PlansService, PayPalService, RazorpayService],
   exports: [PlansService],
 })
 export class PlansModule {}
