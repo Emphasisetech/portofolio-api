@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { MentorModule } from './mentor/mentor.module';
 import { PlansModule } from './plans/plans.module';
 import { JobsModule } from './jobs/jobs.module';
+import { LessonsModule } from './lessons/lessons.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { JobsModule } from './jobs/jobs.module';
     MentorModule,
     PlansModule,
     JobsModule,
+    LessonsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
