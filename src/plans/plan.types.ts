@@ -11,6 +11,7 @@ export interface PlanLimits {
 
 export interface PlanFeatures {
   aiMentor: boolean;
+  jobMatches: boolean;
   resumeImport: boolean;
   proTemplates: boolean;
 }

@@ -15,16 +15,19 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
 export const PLAN_FEATURES: Record<SubscriptionPlan, PlanFeatures> = {
   [SubscriptionPlan.FREE]: {
     aiMentor: false,
+    jobMatches: false,
     resumeImport: false,
     proTemplates: false,
   },
   [SubscriptionPlan.CREATOR]: {
     aiMentor: true,
+    jobMatches: true,
     resumeImport: true,
     proTemplates: false,
   },
   [SubscriptionPlan.PRO]: {
     aiMentor: true,
+    jobMatches: true,
     resumeImport: true,
     proTemplates: true,
   },

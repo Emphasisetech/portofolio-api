@@ -136,6 +136,7 @@ export class PlansService {
       const planLabel = PLAN_LABELS[plan];
       const messages: Record<keyof PlanFeatures, string> = {
         aiMentor: `AI Mentor requires Creator or Pro. You are on ${planLabel}.`,
+        jobMatches: `Job matches require Creator or Pro. You are on ${planLabel}.`,
         resumeImport: `AI resume upload requires Creator or Pro. You are on ${planLabel}.`,
         proTemplates: `Premium templates require Pro. You are on ${planLabel}.`,
       };

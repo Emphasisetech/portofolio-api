@@ -11,6 +11,7 @@ import { TemplatesModule } from './templates/templates.module';
 import { AdminModule } from './admin/admin.module';
 import { MentorModule } from './mentor/mentor.module';
 import { PlansModule } from './plans/plans.module';
+import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PlansModule } from './plans/plans.module';
     AdminModule,
     MentorModule,
     PlansModule,
+    JobsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
