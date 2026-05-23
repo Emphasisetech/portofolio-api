@@ -157,11 +157,29 @@ export class PlansService {
     await this.assertFeature(userId, 'proTemplates');
   }
 
-  async setUserPlan(userId: string, plan: SubscriptionPlan): Promise<User> {
+  async setUserPlan(
+    userId: string,
+    plan: SubscriptionPlan,
+    billing?: { paypalSubscriptionId?: string; paypalSubscriptionStatus?: string },
+  ): Promise<User> {
     const user = await this.userModel
-      .findByIdAndUpdate(userId, { plan }, { new: true })
+      .findByIdAndUpdate(userId, { plan, ...(billing || {}) }, { new: true })
       .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  async setPlanByPayPalSubscriptionId(
+    paypalSubscriptionId: string,
+    plan: SubscriptionPlan,
+    paypalSubscriptionStatus: string,
+  ): Promise<User | null> {
+    return this.userModel
+      .findOneAndUpdate(
+        { paypalSubscriptionId },
+        { plan, paypalSubscriptionStatus },
+        { new: true },
+      )
+      .exec();
   }
 }

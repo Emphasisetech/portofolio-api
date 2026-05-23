@@ -4,6 +4,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { Profile, ProfileSchema } from '../profiles/schemas/profile.schema';
 import { PlansService } from './plans.service';
 import { PlansController } from './plans.controller';
+import { PayPalService } from './paypal.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { PlansController } from './plans.controller';
     ]),
   ],
   controllers: [PlansController],
-  providers: [PlansService],
+  providers: [PlansService, PayPalService],
   exports: [PlansService],
 })
 export class PlansModule {}

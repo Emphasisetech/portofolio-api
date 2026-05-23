@@ -26,6 +26,12 @@ export class User extends Document {
 
   @Prop({ enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
   plan: SubscriptionPlan;
+
+  @Prop()
+  paypalSubscriptionId?: string;
+
+  @Prop()
+  paypalSubscriptionStatus?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
