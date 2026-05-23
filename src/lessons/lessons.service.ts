@@ -10,6 +10,7 @@ interface MiniLesson {
   youtubeUrl: string;
   practiceTask: string;
   durationMinutes: number;
+  maxDurationSeconds: number;
 }
 
 interface TechTrack {
@@ -34,6 +35,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=Tn6-PIqc4UM',
           practiceTask: 'Write one sentence explaining components, props, and state.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
         {
           title: 'React hooks in 100 seconds',
@@ -42,6 +44,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=TNhaISOUy6Q',
           practiceTask: 'List two hooks you use and what each one controls.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -55,6 +58,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=DHjqpvDnNGE',
           practiceTask: 'Write a tiny function that formats one profile skill.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
         {
           title: 'Async JavaScript in 100 seconds',
@@ -63,6 +67,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=PoRJizFvM7s',
           practiceTask: 'Describe when you would use async/await in your app.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -76,6 +81,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=zQnBQ4tB3ZA',
           practiceTask: 'Define one interface for a lesson card.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -83,12 +89,13 @@ export class LessonsService {
       tech: 'Node.js',
       lessons: [
         {
-          title: 'Node.js in 100 seconds',
-          description: 'A quick look at server-side JavaScript, npm, and the Node runtime.',
-          youtubeVideoId: 'ENrzD9HAZK4',
-          youtubeUrl: 'https://www.youtube.com/watch?v=ENrzD9HAZK4',
-          practiceTask: 'Explain what Node does differently from browser JavaScript.',
+          title: 'REST APIs in 100 seconds',
+          description: 'A fast Node/Express-friendly overview of API request and response flow.',
+          youtubeVideoId: '-MTSQjw5DrM',
+          youtubeUrl: 'https://www.youtube.com/watch?v=-MTSQjw5DrM',
+          practiceTask: 'Explain one route, one HTTP method, and one response status.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -102,6 +109,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=-bt_y4Loofg',
           practiceTask: 'Sketch one document shape for a job posting.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -115,6 +123,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=ok-plXXHlWw',
           practiceTask: 'Write semantic markup for a profile header.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -128,6 +137,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=OEV8gMkCHXQ',
           practiceTask: 'Style one button with hover and focus states.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -141,6 +151,7 @@ export class LessonsService {
           youtubeUrl: 'https://www.youtube.com/watch?v=hwP7WQkmECE',
           practiceTask: 'Write the three Git commands you use most often.',
           durationMinutes: 2,
+          maxDurationSeconds: 120,
         },
       ],
     },
@@ -207,10 +218,12 @@ export class LessonsService {
       tech: catalog.tech,
       level: 'Intermediate',
       reason: `Included because ${catalog.tech} appears in your profile skills, projects, or headline.`,
-      lessons: catalog.lessons.map((lesson, index) => ({
-        ...lesson,
-        id: `${this.slug(catalog.tech)}-${index + 1}`,
-      })),
+      lessons: catalog.lessons
+        .filter((lesson) => lesson.durationMinutes <= 2 && lesson.maxDurationSeconds <= 120)
+        .map((lesson, index) => ({
+          ...lesson,
+          id: `${this.slug(catalog.tech)}-${index + 1}`,
+        })),
     };
   }
 
