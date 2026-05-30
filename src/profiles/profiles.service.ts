@@ -29,14 +29,29 @@ export class ProfilesService {
   }
 
   private async ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
-    let slug = baseSlug;
+    let slug = baseSlug.toLowerCase();
     let counter = 2;
     const exclude = excludeId ? { _id: { $ne: new Types.ObjectId(excludeId) } } : {};
 
-    while (await this.profileModel.findOne({ publicSlug: slug, ...exclude }).exec()) {
-      slug = `${baseSlug}-${counter++}`;
+    while (
+      await this.profileModel
+        .findOne({
+          publicSlug: new RegExp(`^${this.escapeRegex(slug)}$`, 'i'),
+          ...exclude,
+        })
+        .exec()
+    ) {
+      slug = `${baseSlug.toLowerCase()}-${counter++}`;
     }
     return slug;
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private exactCaseInsensitive(field: string, value: string) {
+    return { [field]: new RegExp(`^${this.escapeRegex(value)}$`, 'i') };
   }
 
   private async assignPublicSlug(profile: Profile, username: string): Promise<void> {
@@ -211,7 +226,10 @@ export class ProfilesService {
 
   async findByPublicSlug(slug: string): Promise<Profile> {
     const profile = await this.profileModel
-      .findOne({ publicSlug: slug, isPublished: true })
+      .findOne({
+        ...this.exactCaseInsensitive('publicSlug', slug.trim()),
+        isPublished: true,
+      })
       .exec();
 
     if (!profile) {
@@ -223,7 +241,9 @@ export class ProfilesService {
   }
 
   async findPublishedByUsername(username: string): Promise<Profile[]> {
-    const user = await this.userModel.findOne({ username }).exec();
+    const user = await this.userModel
+      .findOne(this.exactCaseInsensitive('username', username.trim()))
+      .exec();
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -237,7 +257,9 @@ export class ProfilesService {
   /** @deprecated Use findByPublicSlug */
   async findByUsername(username: string, profileId?: string): Promise<Profile> {
     if (profileId) {
-      const user = await this.userModel.findOne({ username }).exec();
+      const user = await this.userModel
+        .findOne(this.exactCaseInsensitive('username', username.trim()))
+        .exec();
       if (!user) throw new NotFoundException('User not found');
       const profile = await this.profileModel
         .findOne({

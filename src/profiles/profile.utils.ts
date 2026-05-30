@@ -37,7 +37,7 @@ export function slugifyTitle(title: string): string {
 }
 
 export function buildPublicSlug(username: string, title: string): string {
-  return `${username}-${slugifyTitle(title)}`;
+  return `${slugifyTitle(username)}-${slugifyTitle(title)}`;
 }
 
 export function deepCloneLayout(layout: any) {

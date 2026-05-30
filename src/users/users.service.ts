@@ -8,11 +8,24 @@ import { User, UserRole } from './schemas/user.schema';
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private exactCaseInsensitive(field: string, value: string) {
+    return { [field]: new RegExp(`^${this.escapeRegex(value)}$`, 'i') };
+  }
+
   async create(userData: any): Promise<User> {
-    const { username, email, password } = userData;
+    const username = String(userData.username || '').trim().toLowerCase();
+    const email = String(userData.email || '').trim().toLowerCase();
+    const { password } = userData;
 
     const existingUser = await this.userModel.findOne({
-      $or: [{ username }, { email }],
+      $or: [
+        this.exactCaseInsensitive('username', username),
+        this.exactCaseInsensitive('email', email),
+      ],
     });
 
     if (existingUser) {
@@ -22,6 +35,8 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new this.userModel({
       ...userData,
+      username,
+      email,
       password: hashedPassword,
     });
 
@@ -29,11 +44,15 @@ export class UsersService {
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.userModel.findOne({ username }).exec();
+    return this.userModel
+      .findOne(this.exactCaseInsensitive('username', username.trim()))
+      .exec();
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+    return this.userModel
+      .findOne(this.exactCaseInsensitive('email', email.trim().toLowerCase()))
+      .exec();
   }
 
   async findByUsernameOrEmail(identifier: string): Promise<User | null> {
