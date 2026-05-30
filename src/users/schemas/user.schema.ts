@@ -24,6 +24,12 @@ export class User extends Document {
   @Prop({ default: 0 })
   views: number;
 
+  @Prop()
+  profileImage?: string;
+
+  @Prop({ default: false })
+  useProfileSpecificImages!: boolean;
+
   @Prop({ enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
   plan: SubscriptionPlan;
 

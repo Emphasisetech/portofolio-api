@@ -66,6 +66,27 @@ export class ProfilesService {
       .exec();
   }
 
+  private async withResolvedProfileImage(profile: Profile | null): Promise<any> {
+    if (!profile) return profile;
+    const data = profile.toObject ? profile.toObject() : profile;
+    const user = await this.userModel.findById(data.userId).exec();
+    const useSpecific = user?.useProfileSpecificImages ?? false;
+    const accountImage = user?.profileImage || '';
+    const personalInfo = { ...(data.personalInfo || {}) };
+
+    if (!useSpecific) {
+      personalInfo.profileImage = accountImage;
+    } else if (!personalInfo.profileImage && accountImage) {
+      personalInfo.profileImage = accountImage;
+    }
+
+    return { ...data, personalInfo };
+  }
+
+  private async withResolvedProfileImages(profiles: Profile[]): Promise<any[]> {
+    return Promise.all(profiles.map((profile) => this.withResolvedProfileImage(profile)));
+  }
+
   async findByUserId(userId: string): Promise<Profile[]> {
     let profiles = await this.profileModel
       .find({ userId: new Types.ObjectId(userId) })
@@ -87,7 +108,7 @@ export class ProfilesService {
     } else {
       await this.backfillSlugs(profiles, userId);
     }
-    return profiles;
+    return this.withResolvedProfileImages(profiles);
   }
 
   async getInitialData(userId: string) {
@@ -116,7 +137,7 @@ export class ProfilesService {
     if (!profile) {
       throw new NotFoundException('Profile not found');
     }
-    return profile;
+    return this.withResolvedProfileImage(profile);
   }
 
   async createProfile(userId: string, title: string): Promise<Profile> {
@@ -152,7 +173,7 @@ export class ProfilesService {
       profileKind: copied.profileKind,
     });
     await this.assignPublicSlug(profile, username);
-    return profile.save();
+    return this.withResolvedProfileImage(await profile.save());
   }
 
   /** New profile filled from uploaded resume — does not copy initial/default data. */
@@ -185,7 +206,7 @@ export class ProfilesService {
       profileKind: 'resume',
     });
     await this.assignPublicSlug(profile, username);
-    return profile.save();
+    return this.withResolvedProfileImage(await profile.save());
   }
 
   async findByPublicSlug(slug: string): Promise<Profile> {
@@ -198,7 +219,7 @@ export class ProfilesService {
     }
 
     await this.userModel.findByIdAndUpdate(profile.userId, { $inc: { views: 1 } }).exec();
-    return profile;
+    return this.withResolvedProfileImage(profile);
   }
 
   async findPublishedByUsername(username: string): Promise<Profile[]> {
@@ -206,10 +227,11 @@ export class ProfilesService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return this.profileModel
+    const profiles = await this.profileModel
       .find({ userId: user._id, isPublished: true })
       .sort({ updatedAt: -1 })
       .exec();
+    return this.withResolvedProfileImages(profiles);
   }
 
   /** @deprecated Use findByPublicSlug */
@@ -226,7 +248,7 @@ export class ProfilesService {
         .exec();
       if (!profile) throw new NotFoundException('Published profile not found');
       await this.userModel.findByIdAndUpdate(user._id, { $inc: { views: 1 } }).exec();
-      return profile;
+      return this.withResolvedProfileImage(profile);
     }
 
     const published = await this.findPublishedByUsername(username);
@@ -283,7 +305,34 @@ export class ProfilesService {
     if (!profile) {
       throw new NotFoundException('Profile not found');
     }
-    return profile;
+    return this.withResolvedProfileImage(profile);
+  }
+
+  async updateProfileImage(
+    profileId: string,
+    userId: string,
+    profileImage: string,
+  ): Promise<Profile | null> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user?.useProfileSpecificImages) {
+      throw new ForbiddenException(
+        'Enable per-profile photos in Settings before uploading a profile-specific image.',
+      );
+    }
+    const profile = await this.profileModel
+      .findOne({
+        _id: new Types.ObjectId(profileId),
+        userId: new Types.ObjectId(userId),
+      })
+      .exec();
+    if (!profile) {
+      throw new NotFoundException('Profile not found');
+    }
+    const personalInfo = {
+      ...JSON.parse(JSON.stringify(profile.personalInfo || {})),
+      profileImage,
+    };
+    return this.update(profileId, userId, { personalInfo });
   }
 
   async publish(
@@ -315,7 +364,7 @@ export class ProfilesService {
       )
       .exec();
 
-    return updated;
+    return this.withResolvedProfileImage(updated);
   }
 
   async delete(profileId: string, userId: string): Promise<void> {

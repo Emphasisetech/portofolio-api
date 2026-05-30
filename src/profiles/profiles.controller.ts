@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
 import { ResumeImportService } from './resume-import.service';
+import { CloudinaryService } from './cloudinary.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('profiles')
@@ -25,6 +26,7 @@ export class ProfilesController {
   constructor(
     private profilesService: ProfilesService,
     private resumeImportService: ResumeImportService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -74,6 +76,23 @@ export class ProfilesController {
         error instanceof Error ? error.message : 'Resume import failed';
       throw new InternalServerErrorException(message);
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('upload-profile-image/:id')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
+    }),
+  )
+  async uploadProfileImage(
+    @Request() req: { user: { userId: string } },
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const imageUrl = await this.cloudinaryService.uploadProfileImage(file);
+    return this.profilesService.updateProfileImage(id, req.user.userId, imageUrl);
   }
 
   @Get('public/slug/:slug')

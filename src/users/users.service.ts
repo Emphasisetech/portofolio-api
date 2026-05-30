@@ -48,6 +48,15 @@ export class UsersService {
     return this.userModel.findById(id).exec();
   }
 
+  async updateSettings(
+    id: string,
+    data: { profileImage?: string; useProfileSpecificImages?: boolean },
+  ): Promise<User | null> {
+    return this.userModel
+      .findByIdAndUpdate(id, { $set: data }, { new: true })
+      .exec();
+  }
+
   async findAll(): Promise<User[]> {
     return this.userModel.find().select('-password').exec();
   }

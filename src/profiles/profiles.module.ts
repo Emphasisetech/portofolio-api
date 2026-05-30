@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
 import { ResumeImportService } from './resume-import.service';
+import { CloudinaryService } from './cloudinary.service';
 import { Profile, ProfileSchema } from './schemas/profile.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { PlansModule } from '../plans/plans.module';
@@ -16,7 +17,7 @@ import { PlansModule } from '../plans/plans.module';
     PlansModule,
   ],
   controllers: [ProfilesController],
-  providers: [ProfilesService, ResumeImportService],
+  providers: [ProfilesService, ResumeImportService, CloudinaryService],
   exports: [ProfilesService],
 })
 export class ProfilesModule {}
