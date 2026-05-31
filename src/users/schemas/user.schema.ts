@@ -4,6 +4,7 @@ import { SubscriptionPlan } from '../../plans/plan.types';
 
 export enum UserRole {
   USER = 'USER',
+  COMPANY = 'COMPANY',
   ADMIN = 'ADMIN',
 }
 
@@ -18,8 +19,11 @@ export class User extends Document {
   @Prop({ required: true })
   password: string;
 
-  @Prop({ default: UserRole.USER })
+  @Prop({ enum: UserRole, default: UserRole.USER })
   role: UserRole;
+
+  @Prop()
+  companyName?: string;
 
   @Prop({ default: 0 })
   views: number;

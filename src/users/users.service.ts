@@ -19,6 +19,9 @@ export class UsersService {
   async create(userData: any): Promise<User> {
     const username = String(userData.username || '').trim().toLowerCase();
     const email = String(userData.email || '').trim().toLowerCase();
+    const role = userData.role === UserRole.COMPANY ? UserRole.COMPANY : UserRole.USER;
+    const companyName =
+      role === UserRole.COMPANY ? String(userData.companyName || '').trim() : undefined;
     const { password } = userData;
 
     const existingUser = await this.userModel.findOne({
@@ -37,6 +40,8 @@ export class UsersService {
       ...userData,
       username,
       email,
+      role,
+      companyName,
       password: hashedPassword,
     });
 

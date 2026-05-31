@@ -29,6 +29,7 @@ export class UsersController {
       username: raw.username,
       email: raw.email,
       role: raw.role,
+      companyName: raw.companyName || '',
       views: raw.views ?? 0,
       plan: raw.plan || 'FREE',
       profileImage: raw.profileImage || '',
