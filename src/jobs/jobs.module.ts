@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ProfilesModule } from '../profiles/profiles.module';
-import { PlansModule } from '../plans/plans.module';
+import { UsersModule } from '../users/users.module';
 import { JobsController } from './jobs.controller';
 import { JobsService } from './jobs.service';
 import { Job, JobSchema } from './schemas/job.schema';
@@ -10,7 +10,7 @@ import { Job, JobSchema } from './schemas/job.schema';
   imports: [
     MongooseModule.forFeature([{ name: Job.name, schema: JobSchema }]),
     ProfilesModule,
-    PlansModule,
+    UsersModule,
   ],
   controllers: [JobsController],
   providers: [JobsService],

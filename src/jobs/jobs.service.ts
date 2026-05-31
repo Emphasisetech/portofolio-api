@@ -1,11 +1,17 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ProfilesService } from '../profiles/profiles.service';
-import { PlansService } from '../plans/plans.service';
 import { Job } from './schemas/job.schema';
+import { UsersService } from '../users/users.service';
 
 interface ProfileSummary {
   title: string;
@@ -22,12 +28,14 @@ interface JobMatch {
   missingSkills: string[];
 }
 
+type ApplicationStatus = 'APPLIED' | 'ACCEPTED' | 'DECLINED' | 'HOLD';
+
 @Injectable()
 export class JobsService {
   constructor(
     @InjectModel(Job.name) private jobModel: Model<Job>,
     private profilesService: ProfilesService,
-    private plansService: PlansService,
+    private usersService: UsersService,
     private configService: ConfigService,
   ) {}
 
@@ -107,6 +115,213 @@ export class JobsService {
       .limit(50)
       .lean()
       .exec();
+  }
+
+  private ensureCompany(role?: string) {
+    if (role !== 'COMPANY' && role !== 'ADMIN') {
+      throw new ForbiddenException('Company account required');
+    }
+  }
+
+  private ensureUser(role?: string) {
+    if (role === 'COMPANY') {
+      throw new ForbiddenException('Use a user account to apply for jobs');
+    }
+  }
+
+  private normalizeList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    return String(value || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  private cleanJobInput(data: Record<string, any>) {
+    return {
+      title: String(data.title || '').trim(),
+      company: String(data.company || '').trim(),
+      location: String(data.location || '').trim(),
+      employmentType: String(data.employmentType || '').trim(),
+      workplaceType: String(data.workplaceType || '').trim(),
+      experienceLevel: String(data.experienceLevel || '').trim(),
+      salaryRange: String(data.salaryRange || '').trim(),
+      description: String(data.description || '').trim(),
+      requirements: this.normalizeList(data.requirements),
+      skills: this.normalizeList(data.skills),
+      applyUrl: String(data.applyUrl || '').trim(),
+      active: data.active ?? true,
+      isActive: data.isActive ?? true,
+      status: data.status || 'active',
+    };
+  }
+
+  async createCompanyJob(userId: string, role: string | undefined, data: Record<string, any>) {
+    this.ensureCompany(role);
+    const user = await this.usersService.findById(userId);
+    const jobData = this.cleanJobInput(data);
+    if (!jobData.title || !jobData.description) {
+      throw new BadRequestException('Job title and description are required');
+    }
+
+    const job = new this.jobModel({
+      ...jobData,
+      companyUserId: new Types.ObjectId(userId),
+      company: jobData.company || user?.companyName || user?.username || 'Company',
+      source: 'Company',
+      postedAt: new Date(),
+      applications: [],
+    });
+    return job.save();
+  }
+
+  async getCompanyJobs(userId: string, role: string | undefined) {
+    this.ensureCompany(role);
+    return this.jobModel
+      .find({ companyUserId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+  }
+
+  async updateCompanyJob(
+    userId: string,
+    role: string | undefined,
+    jobId: string,
+    data: Record<string, any>,
+  ) {
+    this.ensureCompany(role);
+    if (!Types.ObjectId.isValid(jobId)) {
+      throw new NotFoundException('Job not found');
+    }
+    const jobData = this.cleanJobInput(data);
+    const updated = await this.jobModel
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(jobId), companyUserId: new Types.ObjectId(userId) },
+        { $set: jobData },
+        { new: true },
+      )
+      .exec();
+    if (!updated) throw new NotFoundException('Job not found');
+    return updated;
+  }
+
+  private async buildCandidateSnapshot(userId: string) {
+    const [user, profiles] = await Promise.all([
+      this.usersService.findById(userId),
+      this.profilesService.findByUserId(userId),
+    ]);
+    const profile = profiles.find((item: any) => item.isDefault) || profiles[0];
+    const rawProfile = profile?.toObject?.() ?? profile ?? {};
+    const personalInfo = rawProfile.personalInfo || {};
+    return {
+      userId,
+      username: user?.username || '',
+      email: user?.email || '',
+      fullName: personalInfo.fullName || user?.username || '',
+      title: personalInfo.title || rawProfile.title || '',
+      location: personalInfo.location || '',
+      contactEmail: personalInfo.contactEmail || user?.email || '',
+      skills: (rawProfile.skills || []).map((skill: any) => skill?.name || skill).filter(Boolean),
+      experience: (rawProfile.experience || []).slice(0, 3),
+      projects: (rawProfile.projects || []).slice(0, 3),
+      profileSlug: rawProfile.publicSlug || '',
+    };
+  }
+
+  async applyToJob(userId: string, role: string | undefined, jobId: string, coverNote = '') {
+    this.ensureUser(role);
+    if (!Types.ObjectId.isValid(jobId)) {
+      throw new NotFoundException('Job not found');
+    }
+    const job = await this.jobModel.findById(jobId).exec();
+    if (!job || job.active === false || job.isActive === false || job.status === 'closed') {
+      throw new NotFoundException('Job not found');
+    }
+    const applications = (job.applications || []) as any[];
+    const existing = applications.find((application) => String(application.userId) === userId);
+    if (existing) {
+      throw new BadRequestException('You already applied to this job');
+    }
+
+    applications.push({
+      userId: new Types.ObjectId(userId),
+      status: 'APPLIED',
+      coverNote: coverNote.trim(),
+      candidateSnapshot: await this.buildCandidateSnapshot(userId),
+    });
+    job.applications = applications as any;
+    await job.save();
+    return applications[applications.length - 1];
+  }
+
+  async getMyApplications(userId: string) {
+    const jobs = await this.jobModel
+      .find({ 'applications.userId': new Types.ObjectId(userId) })
+      .sort({ updatedAt: -1 })
+      .lean()
+      .exec();
+
+    return jobs.flatMap((job: any) =>
+      (job.applications || [])
+        .filter((application: any) => String(application.userId) === userId)
+        .map((application: any) => ({
+          ...application,
+          job: {
+            _id: job._id,
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            employmentType: job.employmentType,
+            workplaceType: job.workplaceType,
+          },
+        })),
+    );
+  }
+
+  async getCompanyApplications(userId: string, role: string | undefined, jobId: string) {
+    this.ensureCompany(role);
+    const job = await this.jobModel
+      .findOne({ _id: new Types.ObjectId(jobId), companyUserId: new Types.ObjectId(userId) })
+      .lean()
+      .exec();
+    if (!job) throw new NotFoundException('Job not found');
+    return {
+      job: {
+        _id: job._id,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+      },
+      applications: job.applications || [],
+    };
+  }
+
+  async updateApplicationStatus(
+    userId: string,
+    role: string | undefined,
+    jobId: string,
+    applicationId: string,
+    status: ApplicationStatus,
+  ) {
+    this.ensureCompany(role);
+    if (!['ACCEPTED', 'DECLINED', 'HOLD', 'APPLIED'].includes(status)) {
+      throw new BadRequestException('Invalid application status');
+    }
+    const job = await this.jobModel
+      .findOne({ _id: new Types.ObjectId(jobId), companyUserId: new Types.ObjectId(userId) })
+      .exec();
+    if (!job) throw new NotFoundException('Job not found');
+
+    const application = ((job.applications || []) as any[]).find(
+      (item) => String(item._id) === applicationId,
+    );
+    if (!application) throw new NotFoundException('Application not found');
+    application.status = status;
+    await job.save();
+    return application;
   }
 
   private heuristicMatch(profile: ProfileSummary, jobs: Record<string, any>[]): JobMatch[] {
@@ -231,8 +446,6 @@ ${JSON.stringify(compactJobs)}`;
     if (!Types.ObjectId.isValid(userId)) {
       throw new ServiceUnavailableException('Invalid user session');
     }
-    await this.plansService.assertFeature(userId, 'jobMatches');
-
     const [profile, activeJobs] = await Promise.all([
       this.getProfileSummary(userId),
       this.getActiveJobs(),
