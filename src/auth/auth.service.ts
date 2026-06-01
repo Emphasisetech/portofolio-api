@@ -40,6 +40,12 @@ export class AuthService {
         companyName: user.companyName || '',
         views: user.views || 0,
         plan: user.plan || 'FREE',
+        dashboards:
+          user.role === 'SUPERADMIN'
+            ? ['admin', 'user']
+            : user.role === 'ADMIN'
+              ? ['admin']
+              : ['user'],
       },
     };
   }

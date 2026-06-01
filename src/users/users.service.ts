@@ -1,4 +1,9 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
@@ -79,6 +84,37 @@ export class UsersService {
     return this.userModel
       .findByIdAndUpdate(id, { $set: data }, { new: true })
       .exec();
+  }
+
+  async changePassword(
+    id: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters');
+    }
+
+    const user = await this.userModel.findById(id).exec();
+    if (!user?.password) {
+      throw new UnauthorizedException('Unable to change password');
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(
+      currentPassword || '',
+      user.password,
+    );
+    if (!currentPasswordMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const newPasswordMatches = await bcrypt.compare(newPassword, user.password);
+    if (newPasswordMatches) {
+      throw new BadRequestException('New password must be different');
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
   }
 
   async findAll(): Promise<User[]> {

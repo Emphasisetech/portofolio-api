@@ -28,3 +28,20 @@ export interface SubscriptionInfo {
   usage: PlanUsage;
   features: PlanFeatures;
 }
+
+export interface PlanCatalogItem {
+  id?: string;
+  code: SubscriptionPlan;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  highlighted: boolean;
+  cta: string;
+  href: string;
+  features: string[];
+  limits: PlanLimits;
+  featureFlags: PlanFeatures;
+  isActive: boolean;
+  sortOrder: number;
+}

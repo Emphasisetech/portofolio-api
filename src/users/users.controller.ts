@@ -32,6 +32,12 @@ export class UsersController {
       companyName: raw.companyName || '',
       views: raw.views ?? 0,
       plan: raw.plan || 'FREE',
+      dashboards:
+        raw.role === 'SUPERADMIN'
+          ? ['admin', 'user']
+          : raw.role === 'ADMIN'
+            ? ['admin']
+            : ['user'],
       profileImage: raw.profileImage || '',
       useProfileSpecificImages: raw.useProfileSpecificImages ?? false,
     };
@@ -58,6 +64,20 @@ export class UsersController {
     });
     if (!user) throw new NotFoundException('User not found');
     return this.serializeUser(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  async changePassword(
+    @Request() req,
+    @Body() body: { currentPassword?: string; newPassword?: string },
+  ) {
+    await this.usersService.changePassword(
+      req.user.userId,
+      body.currentPassword || '',
+      body.newPassword || '',
+    );
+    return { message: 'Password changed successfully' };
   }
 
   @UseGuards(JwtAuthGuard)

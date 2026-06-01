@@ -7,7 +7,7 @@ import { UserRole } from '../users/schemas/user.schema';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class AdminController {
   constructor(private adminService: AdminService) {}
 

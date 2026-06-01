@@ -1,15 +1,21 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Headers,
+  Param,
+  Patch,
   Post,
   Request,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/schemas/user.schema';
 import { PlansService } from './plans.service';
 import { PayPalService } from './paypal.service';
 import { RazorpayService } from './razorpay.service';
@@ -24,6 +30,56 @@ export class PlansController {
     private paypalService: PayPalService,
     private razorpayService: RazorpayService,
   ) {}
+
+  @Get()
+  getPlans() {
+    return this.plansService.getPlanCatalog(false);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Get('admin/all')
+  getAllPlansForAdmin() {
+    return this.plansService.getPlanCatalog(true);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Post('admin')
+  createPlan(@Body() body: any) {
+    return this.plansService.createPlan(body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Patch('admin/:id')
+  updatePlan(@Param('id') id: string, @Body() body: any) {
+    return this.plansService.updatePlan(id, body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Delete('admin/:id')
+  deletePlan(@Param('id') id: string) {
+    return this.plansService.deletePlan(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Post('admin/:id/terminate')
+  terminatePlan(@Param('id') id: string) {
+    return this.plansService.terminatePlan(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Post('admin/users/:userId/plan')
+  assignPlanToUser(
+    @Param('userId') userId: string,
+    @Body('plan') plan: string,
+  ) {
+    return this.plansService.assignPlanToUser(userId, normalizePlan(plan));
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get('subscription')

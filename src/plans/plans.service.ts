@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -9,6 +10,7 @@ import { User } from '../users/schemas/user.schema';
 import { Profile } from '../profiles/schemas/profile.schema';
 import { getProfileKind } from '../profiles/profile.utils';
 import {
+  DEFAULT_PLAN_CATALOG,
   PLAN_FEATURES,
   PLAN_LABELS,
   PLAN_LIMITS,
@@ -16,17 +18,101 @@ import {
   normalizePlan,
 } from './plans.constants';
 import {
+  PlanCatalogItem,
   PlanFeatures,
+  PlanLimits,
   SubscriptionInfo,
   SubscriptionPlan,
 } from './plan.types';
+import { PlanDefinition } from './schemas/plan.schema';
 
 @Injectable()
-export class PlansService {
+export class PlansService implements OnModuleInit {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Profile.name) private profileModel: Model<Profile>,
+    @InjectModel(PlanDefinition.name)
+    private planModel: Model<PlanDefinition>,
   ) {}
+
+  async onModuleInit() {
+    await this.seedDefaultPlans();
+  }
+
+  private serializePlan(plan: PlanDefinition): PlanCatalogItem {
+    const raw = plan.toObject ? plan.toObject() : plan;
+    return {
+      id: raw._id?.toString(),
+      code: raw.code,
+      name: raw.name,
+      price: raw.price,
+      period: raw.period,
+      description: raw.description,
+      highlighted: raw.highlighted,
+      cta: raw.cta,
+      href: raw.href,
+      features: raw.features || [],
+      limits: raw.limits,
+      featureFlags: raw.featureFlags,
+      isActive: raw.isActive,
+      sortOrder: raw.sortOrder ?? 0,
+    };
+  }
+
+  private fallbackPlan(code: SubscriptionPlan): PlanCatalogItem {
+    return (
+      DEFAULT_PLAN_CATALOG.find((plan) => plan.code === code) ||
+      DEFAULT_PLAN_CATALOG[0]
+    );
+  }
+
+  private cleanLimits(value?: Partial<PlanLimits>): PlanLimits {
+    return {
+      maxResumes:
+        value?.maxResumes === null || typeof value?.maxResumes === 'number'
+          ? value.maxResumes
+          : 0,
+      maxWebsites:
+        value?.maxWebsites === null || typeof value?.maxWebsites === 'number'
+          ? value.maxWebsites
+          : 0,
+    };
+  }
+
+  private cleanFeatures(value?: Partial<PlanFeatures>): PlanFeatures {
+    return {
+      aiMentor: Boolean(value?.aiMentor),
+      jobMatches: Boolean(value?.jobMatches),
+      resumeImport: Boolean(value?.resumeImport),
+      proTemplates: Boolean(value?.proTemplates),
+    };
+  }
+
+  private async seedDefaultPlans() {
+    for (const plan of DEFAULT_PLAN_CATALOG) {
+      await this.planModel
+        .updateOne(
+          { code: plan.code },
+          { $setOnInsert: plan },
+          { upsert: true },
+        )
+        .exec();
+    }
+  }
+
+  async getPlanCatalog(includeInactive = false): Promise<PlanCatalogItem[]> {
+    const query = includeInactive ? {} : { isActive: true };
+    const plans = await this.planModel
+      .find(query)
+      .sort({ sortOrder: 1, createdAt: 1 })
+      .exec();
+    return plans.map((plan) => this.serializePlan(plan));
+  }
+
+  async getPlanDefinition(code: SubscriptionPlan): Promise<PlanCatalogItem> {
+    const plan = await this.planModel.findOne({ code, isActive: true }).exec();
+    return plan ? this.serializePlan(plan) : this.fallbackPlan(code);
+  }
 
   async getUserPlan(userId: string): Promise<SubscriptionPlan> {
     const user = await this.userModel.findById(userId).exec();
@@ -51,19 +137,21 @@ export class PlansService {
     return { resumes, websites };
   }
 
-  getFeatures(plan: SubscriptionPlan): PlanFeatures {
-    return { ...PLAN_FEATURES[plan] };
+  async getFeatures(plan: SubscriptionPlan): Promise<PlanFeatures> {
+    const planData = await this.getPlanDefinition(plan);
+    return { ...planData.featureFlags };
   }
 
   async getSubscription(userId: string): Promise<SubscriptionInfo> {
     const plan = await this.getUserPlan(userId);
     const usage = await this.getUsage(userId);
+    const planData = await this.getPlanDefinition(plan);
     return {
       plan,
-      planLabel: PLAN_LABELS[plan],
-      limits: { ...PLAN_LIMITS[plan] },
+      planLabel: planData.name,
+      limits: { ...planData.limits },
       usage,
-      features: this.getFeatures(plan),
+      features: { ...planData.featureFlags },
     };
   }
 
@@ -87,8 +175,9 @@ export class PlansService {
   ): Promise<void> {
     const plan = await this.getUserPlan(userId);
     const usage = await this.getUsage(userId);
-    const limits = PLAN_LIMITS[plan];
-    const planLabel = PLAN_LABELS[plan];
+    const planData = await this.getPlanDefinition(plan);
+    const limits = planData.limits;
+    const planLabel = planData.name;
 
     if (kind === 'resume') {
       this.assertUnderLimit(
@@ -132,8 +221,9 @@ export class PlansService {
     feature: keyof PlanFeatures,
   ): Promise<void> {
     const plan = await this.getUserPlan(userId);
-    if (!PLAN_FEATURES[plan][feature]) {
-      const planLabel = PLAN_LABELS[plan];
+    const planData = await this.getPlanDefinition(plan);
+    if (!planData.featureFlags[feature]) {
+      const planLabel = planData.name;
       const messages: Record<keyof PlanFeatures, string> = {
         aiMentor: `AI Mentor requires Creator or Pro. You are on ${planLabel}.`,
         jobMatches: `Job matches require Creator or Pro. You are on ${planLabel}.`,
@@ -152,7 +242,8 @@ export class PlansService {
     if (!PRO_TEMPLATE_IDS.has(templateId)) return;
 
     const plan = await this.getUserPlan(userId);
-    if (PLAN_FEATURES[plan].proTemplates) return;
+    const features = await this.getFeatures(plan);
+    if (features.proTemplates) return;
 
     await this.assertFeature(userId, 'proTemplates');
   }
@@ -187,5 +278,88 @@ export class PlansService {
         { new: true },
       )
       .exec();
+  }
+
+  async createPlan(data: Partial<PlanCatalogItem>): Promise<PlanCatalogItem> {
+    const code = normalizePlan(data.code);
+    if (!data.code || code !== data.code) {
+      throw new ForbiddenException('Invalid plan code.');
+    }
+    const fallback = this.fallbackPlan(code);
+    const plan = new this.planModel({
+      ...fallback,
+      ...data,
+      code,
+      limits: this.cleanLimits(data.limits || fallback.limits),
+      featureFlags: this.cleanFeatures(
+        data.featureFlags || fallback.featureFlags,
+      ),
+      isActive: data.isActive ?? true,
+    });
+    return this.serializePlan(await plan.save());
+  }
+
+  async updatePlan(
+    id: string,
+    data: Partial<PlanCatalogItem>,
+  ): Promise<PlanCatalogItem> {
+    const update: Record<string, unknown> = { ...data };
+    delete update.id;
+    delete update.code;
+    if (data.limits) update.limits = this.cleanLimits(data.limits);
+    if (data.featureFlags) {
+      update.featureFlags = this.cleanFeatures(data.featureFlags);
+    }
+    const plan = await this.planModel
+      .findByIdAndUpdate(id, { $set: update }, { new: true })
+      .exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+    return this.serializePlan(plan);
+  }
+
+  async deletePlan(id: string) {
+    const plan = await this.planModel.findById(id).exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+
+    const assignedUsers = await this.userModel
+      .countDocuments({ plan: plan.code })
+      .exec();
+    if (assignedUsers > 0) {
+      throw new ForbiddenException(
+        `Cannot delete ${plan.name} because ${assignedUsers} user${assignedUsers === 1 ? '' : 's'} currently ${assignedUsers === 1 ? 'holds' : 'hold'} it.`,
+      );
+    }
+
+    await this.planModel.findByIdAndDelete(id).exec();
+    return { deleted: true };
+  }
+
+  async terminatePlan(id: string): Promise<PlanCatalogItem> {
+    const plan = await this.planModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { isActive: false, terminatedAt: new Date() } },
+        { new: true },
+      )
+      .exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+    if (plan.code !== SubscriptionPlan.FREE) {
+      await this.userModel
+        .updateMany(
+          { plan: plan.code },
+          { $set: { plan: SubscriptionPlan.FREE } },
+        )
+        .exec();
+    }
+    return this.serializePlan(plan);
+  }
+
+  async assignPlanToUser(
+    userId: string,
+    plan: SubscriptionPlan,
+  ): Promise<User> {
+    const planData = await this.getPlanDefinition(plan);
+    if (!planData.isActive) throw new ForbiddenException('Plan is terminated.');
+    return this.setUserPlan(userId, plan);
   }
 }
