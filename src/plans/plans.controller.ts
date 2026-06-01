@@ -73,6 +73,13 @@ export class PlansController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPERADMIN)
+  @Post('admin/:id/activate')
+  activatePlan(@Param('id') id: string) {
+    return this.plansService.activatePlan(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
   @Post('admin/users/:userId/plan')
   assignPlanToUser(
     @Param('userId') userId: string,

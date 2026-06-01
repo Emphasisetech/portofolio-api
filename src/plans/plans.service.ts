@@ -354,6 +354,18 @@ export class PlansService implements OnModuleInit {
     return this.serializePlan(plan);
   }
 
+  async activatePlan(id: string): Promise<PlanCatalogItem> {
+    const plan = await this.planModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { isActive: true }, $unset: { terminatedAt: '' } },
+        { new: true },
+      )
+      .exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+    return this.serializePlan(plan);
+  }
+
   async assignPlanToUser(
     userId: string,
     plan: SubscriptionPlan,
