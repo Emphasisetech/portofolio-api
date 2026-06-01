@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { PLAN_LABELS } from './plans.constants';
 import { SubscriptionPlan } from './plan.types';
+import { PlansService } from './plans.service';
 
 interface RazorpayOrder {
   id: string;
@@ -34,7 +34,10 @@ interface RazorpayErrorResponse {
 export class RazorpayService {
   private readonly baseUrl = 'https://api.razorpay.com/v1';
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private plansService: PlansService,
+  ) {}
 
   private getConfigValue(key: string): string {
     return this.configService.get<string>(key)?.trim() || '';
@@ -63,21 +66,26 @@ export class RazorpayService {
     return { keyId, keySecret };
   }
 
-  private getAmount(plan: SubscriptionPlan): number {
-    const envKey =
-      plan === SubscriptionPlan.CREATOR
-        ? 'RAZORPAY_CREATOR_AMOUNT_PAISE'
-        : plan === SubscriptionPlan.PRO
-          ? 'RAZORPAY_PRO_AMOUNT_PAISE'
-          : '';
-    const rawAmount = envKey ? this.getConfigValue(envKey) : '';
-    const amount = Number(rawAmount);
+  private parsePriceToMinorUnit(price: string): number {
+    const numericPrice = Number(String(price).replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      return 0;
+    }
+    return Math.round(numericPrice * 100);
+  }
+
+  private async getPlanPaymentDetails(plan: SubscriptionPlan): Promise<{
+    amount: number;
+    name: string;
+  }> {
+    const planData = await this.plansService.getPlanDefinition(plan);
+    const amount = this.parsePriceToMinorUnit(planData.price);
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new BadRequestException(
-        `Razorpay amount is not configured for ${PLAN_LABELS[plan]}.`,
+        `Razorpay amount is not configured for ${planData.name}.`,
       );
     }
-    return amount;
+    return { amount, name: planData.name };
   }
 
   private async request<T>(
@@ -121,7 +129,7 @@ export class RazorpayService {
       throw new BadRequestException('Free plan does not require payment.');
     }
 
-    const amount = this.getAmount(plan);
+    const { amount, name } = await this.getPlanPaymentDetails(plan);
     const receipt = `${plan.toLowerCase()}_${Date.now()}`;
     const order = await this.request<RazorpayOrder>('/orders', {
       method: 'POST',
@@ -149,7 +157,7 @@ export class RazorpayService {
       currency: order.currency,
       plan,
       name: this.getConfigValue('RAZORPAY_BRAND_NAME') || 'Portfolio Builder',
-      description: `${PLAN_LABELS[plan]} plan`,
+      description: `${name} plan`,
     };
   }
 
@@ -190,7 +198,9 @@ export class RazorpayService {
     const order = await this.request<RazorpayOrder>(
       `/orders/${params.razorpayOrderId}`,
     );
-    const expectedAmount = this.getAmount(params.expectedPlan);
+    const { amount: expectedAmount } = await this.getPlanPaymentDetails(
+      params.expectedPlan,
+    );
     if (
       order.amount !== expectedAmount ||
       order.currency !== this.currency ||
