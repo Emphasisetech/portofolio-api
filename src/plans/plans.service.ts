@@ -255,6 +255,8 @@ export class PlansService implements OnModuleInit {
       razorpayOrderId?: string;
       razorpayPaymentId?: string;
       razorpayPaymentStatus?: string;
+      razorpaySubscriptionId?: string;
+      razorpaySubscriptionStatus?: string;
     },
   ): Promise<User> {
     const user = await this.userModel
@@ -262,6 +264,20 @@ export class PlansService implements OnModuleInit {
       .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  async setPlanByRazorpaySubscriptionId(
+    razorpaySubscriptionId: string,
+    plan: SubscriptionPlan,
+    razorpaySubscriptionStatus: string,
+  ): Promise<User | null> {
+    return this.userModel
+      .findOneAndUpdate(
+        { razorpaySubscriptionId },
+        { plan, razorpaySubscriptionStatus },
+        { new: true },
+      )
+      .exec();
   }
 
   async createPlan(data: Partial<PlanCatalogItem>): Promise<PlanCatalogItem> {

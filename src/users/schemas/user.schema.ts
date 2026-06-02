@@ -46,6 +46,12 @@ export class User extends Document {
 
   @Prop({ default: '', type: String })
   razorpayPaymentStatus?: string;
+
+  @Prop({ default: '', type: String })
+  razorpaySubscriptionId?: string;
+
+  @Prop({ default: '', type: String })
+  razorpaySubscriptionStatus?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

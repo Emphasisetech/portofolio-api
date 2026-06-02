@@ -4,12 +4,15 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
+  Req,
   Request,
   UseGuards,
 } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -93,6 +96,19 @@ export class PlansController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('razorpay/checkout')
+  createRazorpayCheckout(
+    @Request() req: { user: { userId: string } },
+    @Body('plan') plan: string,
+  ) {
+    const normalized = normalizePlan(plan);
+    if (normalized === SubscriptionPlan.FREE) {
+      throw new ForbiddenException('Choose a paid plan to start checkout.');
+    }
+    return this.razorpayService.createCheckout(req.user.userId, normalized);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('razorpay/order')
   createRazorpayOrder(
     @Request() req: { user: { userId: string } },
@@ -133,6 +149,87 @@ export class PlansController {
     });
 
     return this.plansService.getSubscription(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('razorpay/subscription/confirm')
+  async confirmRazorpaySubscription(
+    @Request() req: { user: { userId: string } },
+    @Body('plan') plan: string,
+    @Body('razorpay_subscription_id') razorpaySubscriptionId: string,
+    @Body('razorpay_payment_id') razorpayPaymentId: string,
+    @Body('razorpay_signature') razorpaySignature: string,
+  ) {
+    const normalized = normalizePlan(plan);
+    if (normalized === SubscriptionPlan.FREE) {
+      throw new ForbiddenException('Invalid paid plan.');
+    }
+
+    const subscription = await this.razorpayService.verifySubscription({
+      expectedPlan: normalized,
+      userId: req.user.userId,
+      razorpaySubscriptionId,
+      razorpayPaymentId,
+      razorpaySignature,
+    });
+    await this.plansService.setUserPlan(req.user.userId, normalized, {
+      razorpaySubscriptionId: subscription.id,
+      razorpaySubscriptionStatus: subscription.status,
+      razorpayPaymentId,
+      razorpayPaymentStatus: 'paid',
+    });
+
+    return this.plansService.getSubscription(req.user.userId);
+  }
+
+  @Post('razorpay/webhook')
+  async handleRazorpayWebhook(
+    @Headers('x-razorpay-signature') signature: string | undefined,
+    @Req() req: ExpressRequest & { rawBody?: Buffer },
+    @Body() event: { event?: string },
+  ) {
+    this.razorpayService.verifyWebhookSignature(req.rawBody, signature);
+    const subscription = this.razorpayService.getSubscriptionFromWebhook(event);
+    if (!subscription?.id) return { received: true };
+
+    const status = subscription.status || 'unknown';
+    if (
+      [
+        'subscription.authenticated',
+        'subscription.activated',
+        'subscription.charged',
+      ].includes(event.event || '')
+    ) {
+      const paidPlan = normalizePlan(subscription.notes?.plan);
+      if (
+        paidPlan !== SubscriptionPlan.CREATOR &&
+        paidPlan !== SubscriptionPlan.PRO
+      ) {
+        return { received: true };
+      }
+      await this.plansService.setPlanByRazorpaySubscriptionId(
+        subscription.id,
+        paidPlan,
+        status,
+      );
+    }
+
+    if (
+      [
+        'subscription.cancelled',
+        'subscription.completed',
+        'subscription.expired',
+        'subscription.halted',
+      ].includes(event.event || '')
+    ) {
+      await this.plansService.setPlanByRazorpaySubscriptionId(
+        subscription.id,
+        SubscriptionPlan.FREE,
+        status,
+      );
+    }
+
+    return { received: true };
   }
 
   /** Dev/demo upgrade when ALLOW_DEV_PLAN_UPGRADE=true - no payment. */
