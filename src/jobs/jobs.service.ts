@@ -118,13 +118,13 @@ export class JobsService {
   }
 
   private ensureCompany(role?: string) {
-    if (role !== 'COMPANY' && role !== 'ADMIN') {
+    if (role !== 'COMPANY') {
       throw new ForbiddenException('Company account required');
     }
   }
 
   private ensureUser(role?: string) {
-    if (role === 'COMPANY') {
+    if (role !== 'USER') {
       throw new ForbiddenException('Use a user account to apply for jobs');
     }
   }

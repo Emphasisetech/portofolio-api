@@ -35,6 +35,12 @@ export class User extends Document {
   @Prop({ default: false, type: Boolean })
   useProfileSpecificImages!: boolean;
 
+  @Prop({ default: true, type: Boolean })
+  isActive!: boolean;
+
+  @Prop({ type: Date })
+  deactivatedAt?: Date;
+
   @Prop({ default: SubscriptionPlan.FREE, type: String })
   plan!: string;
 

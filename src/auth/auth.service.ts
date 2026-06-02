@@ -15,6 +15,11 @@ export class AuthService {
     if (!user?.password) {
       return null;
     }
+    if (user.isActive === false) {
+      throw new UnauthorizedException(
+        'Account is disabled. Contact an admin to activate it.',
+      );
+    }
     try {
       const passwordMatches = await bcrypt.compare(pass, user.password);
       if (!passwordMatches) {
@@ -40,12 +45,8 @@ export class AuthService {
         companyName: user.companyName || '',
         views: user.views || 0,
         plan: user.plan || 'FREE',
-        dashboards:
-          user.role === 'SUPERADMIN'
-            ? ['admin', 'user']
-            : user.role === 'ADMIN'
-              ? ['admin']
-              : ['user'],
+        dashboards: [String(user.role || 'USER').toLowerCase()],
+        isActive: user.isActive !== false,
       },
     };
   }

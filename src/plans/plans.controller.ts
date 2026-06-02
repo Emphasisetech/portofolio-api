@@ -34,7 +34,7 @@ export class PlansController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.SUPERADMIN)
   @Get('admin/all')
   getAllPlansForAdmin() {
     return this.plansService.getPlanCatalog(true);
@@ -86,13 +86,15 @@ export class PlansController {
     return this.plansService.assignPlanToUser(userId, normalizePlan(plan));
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Get('subscription')
   getSubscription(@Request() req: { user: { userId: string } }) {
     return this.plansService.getSubscription(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('razorpay/order')
   createRazorpayOrder(
     @Request() req: { user: { userId: string } },
@@ -105,7 +107,8 @@ export class PlansController {
     return this.razorpayService.createOrder(req.user.userId, normalized);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('razorpay/confirm')
   async confirmRazorpayPayment(
     @Request() req: { user: { userId: string } },
@@ -136,7 +139,8 @@ export class PlansController {
   }
 
   /** Dev/demo upgrade when ALLOW_DEV_PLAN_UPGRADE=true - no payment. */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('upgrade')
   async upgradePlan(
     @Request() req: { user: { userId: string } },

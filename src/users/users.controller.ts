@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Post,
@@ -32,14 +33,10 @@ export class UsersController {
       companyName: raw.companyName || '',
       views: raw.views ?? 0,
       plan: raw.plan || 'FREE',
-      dashboards:
-        raw.role === 'SUPERADMIN'
-          ? ['admin', 'user']
-          : raw.role === 'ADMIN'
-            ? ['admin']
-            : ['user'],
+      dashboards: [String(raw.role || 'USER').toLowerCase()],
       profileImage: raw.profileImage || '',
       useProfileSpecificImages: raw.useProfileSpecificImages ?? false,
+      isActive: raw.isActive !== false,
     };
   }
 
@@ -78,6 +75,14 @@ export class UsersController {
       body.newPassword || '',
     );
     return { message: 'Password changed successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('me')
+  async deactivateMe(@Request() req) {
+    const user = await this.usersService.deactivateAccount(req.user.userId);
+    if (!user) throw new NotFoundException('User not found');
+    return { message: 'Account disabled successfully' };
   }
 
   @UseGuards(JwtAuthGuard)

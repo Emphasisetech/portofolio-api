@@ -18,6 +18,9 @@ import { ProfilesService } from './profiles.service';
 import { ResumeImportService } from './resume-import.service';
 import { CloudinaryService } from './cloudinary.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/schemas/user.schema';
 
 @Controller('profiles')
 export class ProfilesController {
@@ -29,25 +32,29 @@ export class ProfilesController {
     private cloudinaryService: CloudinaryService,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Get('me')
   async getMyProfiles(@Request() req) {
     return this.profilesService.findByUserId(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Get('initial-data')
   async getInitialData(@Request() req) {
     return this.profilesService.getInitialData(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('create')
   async createProfile(@Request() req, @Body('title') title: string) {
     return this.profilesService.createProfile(req.user.userId, title);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('import-resume')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -78,7 +85,8 @@ export class ProfilesController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('upload-profile-image/:id')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -118,26 +126,30 @@ export class ProfilesController {
     return this.profilesService.findByUsername(username, profileId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Get(':id')
   async getProfile(@Request() req, @Param('id') id: string) {
     if (id === 'me' || id === 'create' || id === 'update' || id === 'publish') return; // Handled by other routes
     return this.profilesService.findById(id, req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('update/:id')
   async updateProfile(@Request() req, @Param('id') id: string, @Body() updateData: any) {
     return this.profilesService.update(id, req.user.userId, updateData);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('publish/:id')
   async publishProfile(@Request() req, @Param('id') id: string, @Body() body: { isPublished: boolean }) {
     return this.profilesService.publish(id, req.user.userId, body.isPublished);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post('delete/:id')
   async deleteProfile(@Request() req, @Param('id') id: string) {
     await this.profilesService.delete(id, req.user.userId);

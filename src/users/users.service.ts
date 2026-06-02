@@ -86,6 +86,27 @@ export class UsersService {
       .exec();
   }
 
+  async deactivateAccount(id: string): Promise<User | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { isActive: false, deactivatedAt: new Date() } },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async activateAccount(id: string): Promise<User | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { isActive: true }, $unset: { deactivatedAt: '' } },
+        { new: true },
+      )
+      .select('-password')
+      .exec();
+  }
+
   async changePassword(
     id: string,
     currentPassword: string,
@@ -122,6 +143,6 @@ export class UsersService {
   }
 
   async delete(id: string): Promise<any> {
-    return this.userModel.findByIdAndDelete(id).exec();
+    return this.deactivateAccount(id);
   }
 }
