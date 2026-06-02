@@ -122,9 +122,10 @@ export const PRO_TEMPLATE_IDS = new Set([
   'web-sky',
 ]);
 
-export function normalizePlan(value?: string): SubscriptionPlan {
+export function normalizePlan(value?: string): any {
   const upper = (value || '').toUpperCase();
   if (upper === SubscriptionPlan.CREATOR) return SubscriptionPlan.CREATOR;
-  if (upper === SubscriptionPlan.PRO) return SubscriptionPlan.PRO;
-  return SubscriptionPlan.FREE;
+  // if (upper === SubscriptionPlan.PRO) return SubscriptionPlan.PRO;
+  // return SubscriptionPlan.FREE;
+  return upper
 }
