@@ -318,7 +318,7 @@ export class PlansService implements OnModuleInit {
   }
 
   async deletePlan(id: string) {
-    const plan = await this.planModel.findById(id).exec();
+    const plan = await this.planModel.findById(id).lean();
     if (!plan) throw new NotFoundException('Plan not found');
 
     const assignedUsers = await this.userModel
@@ -343,14 +343,14 @@ export class PlansService implements OnModuleInit {
       )
       .exec();
     if (!plan) throw new NotFoundException('Plan not found');
-    if (plan.code !== SubscriptionPlan.FREE) {
-      await this.userModel
-        .updateMany(
-          { plan: plan.code },
-          { $set: { plan: SubscriptionPlan.FREE } },
-        )
-        .exec();
-    }
+    // if (plan.code !== SubscriptionPlan.FREE) {
+    //   await this.userModel
+    //     .updateMany(
+    //       { plan: plan.code },
+    //       { $set: { plan: SubscriptionPlan.FREE } },
+    //     )
+    //     .exec();
+    // }
     return this.serializePlan(plan);
   }
 

@@ -5,32 +5,32 @@ import type { PlanFeatures, PlanLimits } from '../plan.types';
 
 @Schema({ timestamps: true })
 export class PlanDefinition extends Document {
-  @Prop({ enum: SubscriptionPlan, required: true, unique: true })
-  code: SubscriptionPlan;
+  @Prop({ required: true, unique: true , type: String })
+  code!: string;
 
-  @Prop({ required: true })
-  name: string;
+  @Prop({ required: true, type: String })
+  name!: string;
 
-  @Prop({ required: true })
-  price: string;
+  @Prop({ required: true, type: String })
+  price!: string;
 
-  @Prop({ default: '/month' })
-  period: string;
+  @Prop({ default: '/month', type: String })
+  period!: string;
 
-  @Prop({ default: '' })
-  description: string;
+  @Prop({ default: '', type: String })
+  description!: string;
 
-  @Prop({ default: false })
-  highlighted: boolean;
+  @Prop({ default: false, type: Boolean })
+  highlighted!: boolean;
 
-  @Prop({ default: 'Choose plan' })
-  cta: string;
+  @Prop({ default: 'Choose plan', type: String })
+  cta!: string;
 
-  @Prop({ default: '/register' })
-  href: string;
+  @Prop({ default: '/register', type: String })
+  href!: string;
 
   @Prop({ type: [String], default: [] })
-  features: string[];
+  features!: string[];
 
   @Prop({
     type: {
@@ -39,7 +39,7 @@ export class PlanDefinition extends Document {
     },
     required: true,
   })
-  limits: PlanLimits;
+  limits!: PlanLimits;
 
   @Prop({
     type: {
@@ -50,15 +50,15 @@ export class PlanDefinition extends Document {
     },
     required: true,
   })
-  featureFlags: PlanFeatures;
+  featureFlags!: PlanFeatures;
 
-  @Prop({ default: true })
-  isActive: boolean;
+  @Prop({ default: true, type: Boolean })
+  isActive: boolean | undefined;
 
-  @Prop({ default: 0 })
-  sortOrder: number;
+  @Prop({ default: 0, type: Number })
+  sortOrder!: number;
 
-  @Prop()
+  @Prop({ type: Date })
   terminatedAt?: Date;
 }
 

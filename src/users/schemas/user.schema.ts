@@ -11,46 +11,46 @@ export enum UserRole {
 
 @Schema({ timestamps: true })
 export class User extends Document {
-  @Prop({ required: true, unique: true })
-  username: string;
+  @Prop({ required: true, unique: true,  type: String })
+  username!: string;
 
-  @Prop({ required: true, unique: true })
-  email: string;
+  @Prop({ required: true, unique: true, type: String })
+  email!: string;
 
-  @Prop({ required: true })
-  password: string;
+  @Prop({ required: true, type: String })
+  password!: string;
 
   @Prop({ enum: UserRole, default: UserRole.USER })
-  role: UserRole;
+  role!: UserRole;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   companyName?: string;
 
-  @Prop({ default: 0 })
-  views: number;
+  @Prop({ default: 0, type: Number })
+  views!: number;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   profileImage?: string;
 
-  @Prop({ default: false })
+  @Prop({ default: false, type: Boolean })
   useProfileSpecificImages!: boolean;
 
-  @Prop({ enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
-  plan: SubscriptionPlan;
+  @Prop({ default: SubscriptionPlan.FREE, type: String })
+  plan!: string;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   paypalSubscriptionId?: string;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   paypalSubscriptionStatus?: string;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   razorpayOrderId?: string;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   razorpayPaymentId?: string;
 
-  @Prop()
+  @Prop({ default: '', type: String })
   razorpayPaymentStatus?: string;
 }
 

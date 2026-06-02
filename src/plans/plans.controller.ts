@@ -47,6 +47,7 @@ export class PlansController {
   @Roles(UserRole.SUPERADMIN)
   @Post('admin')
   createPlan(@Body() body: any) {
+    console.log('Creating plan with data:', body);
     return this.plansService.createPlan(body);
   }
 
