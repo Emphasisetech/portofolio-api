@@ -39,12 +39,6 @@ export class User extends Document {
   plan!: string;
 
   @Prop({ default: '', type: String })
-  paypalSubscriptionId?: string;
-
-  @Prop({ default: '', type: String })
-  paypalSubscriptionStatus?: string;
-
-  @Prop({ default: '', type: String })
   razorpayOrderId?: string;
 
   @Prop({ default: '', type: String })

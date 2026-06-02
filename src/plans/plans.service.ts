@@ -252,8 +252,6 @@ export class PlansService implements OnModuleInit {
     userId: string,
     plan: SubscriptionPlan,
     billing?: {
-      paypalSubscriptionId?: string;
-      paypalSubscriptionStatus?: string;
       razorpayOrderId?: string;
       razorpayPaymentId?: string;
       razorpayPaymentStatus?: string;
@@ -264,20 +262,6 @@ export class PlansService implements OnModuleInit {
       .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
-  }
-
-  async setPlanByPayPalSubscriptionId(
-    paypalSubscriptionId: string,
-    plan: SubscriptionPlan,
-    paypalSubscriptionStatus: string,
-  ): Promise<User | null> {
-    return this.userModel
-      .findOneAndUpdate(
-        { paypalSubscriptionId },
-        { plan, paypalSubscriptionStatus },
-        { new: true },
-      )
-      .exec();
   }
 
   async createPlan(data: Partial<PlanCatalogItem>): Promise<PlanCatalogItem> {
