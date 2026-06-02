@@ -8,7 +8,6 @@ import {
 } from './schemas/plan.schema';
 import { PlansService } from './plans.service';
 import { PlansController } from './plans.controller';
-import { PayPalService } from './paypal.service';
 import { RazorpayService } from './razorpay.service';
 
 @Module({
@@ -20,7 +19,7 @@ import { RazorpayService } from './razorpay.service';
     ]),
   ],
   controllers: [PlansController],
-  providers: [PlansService, PayPalService, RazorpayService],
+  providers: [PlansService, RazorpayService],
   exports: [PlansService],
 })
 export class PlansModule {}
