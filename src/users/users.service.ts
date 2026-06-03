@@ -11,6 +11,10 @@ import { User, UserRole } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
+  private static readonly USERNAME_PATTERN = /^[a-z][a-z0-9_-]*$/;
+  private static readonly PASSWORD_PATTERN =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   private escapeRegex(value: string): string {
@@ -21,6 +25,22 @@ export class UsersService {
     return { [field]: new RegExp(`^${this.escapeRegex(value)}$`, 'i') };
   }
 
+  private validateUsername(username: string): void {
+    if (username.length < 5 || !UsersService.USERNAME_PATTERN.test(username)) {
+      throw new BadRequestException(
+        'Username must be at least 5 characters, start with a-z, and use only a-z, 0-9, _ or -',
+      );
+    }
+  }
+
+  private validatePassword(password: string, label = 'Password'): void {
+    if (!UsersService.PASSWORD_PATTERN.test(password || '')) {
+      throw new BadRequestException(
+        `${label} must be at least 8 characters and include one capital letter, one small letter, one digit, and one special character`,
+      );
+    }
+  }
+
   async create(userData: any): Promise<User> {
     const username = String(userData.username || '').trim().toLowerCase();
     const email = String(userData.email || '').trim().toLowerCase();
@@ -28,6 +48,9 @@ export class UsersService {
     const companyName =
       role === UserRole.COMPANY ? String(userData.companyName || '').trim() : undefined;
     const { password } = userData;
+
+    this.validateUsername(username);
+    this.validatePassword(password);
 
     const existingUser = await this.userModel.findOne({
       $or: [
@@ -112,9 +135,7 @@ export class UsersService {
     currentPassword: string,
     newPassword: string,
   ): Promise<void> {
-    if (!newPassword || newPassword.length < 6) {
-      throw new BadRequestException('New password must be at least 6 characters');
-    }
+    this.validatePassword(newPassword, 'New password');
 
     const user = await this.userModel.findById(id).exec();
     if (!user?.password) {
