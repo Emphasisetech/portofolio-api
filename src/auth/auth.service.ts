@@ -46,6 +46,9 @@ export class AuthService {
         views: user.views || 0,
         plan: user.plan || 'FREE',
         dashboards: [String(user.role || 'USER').toLowerCase()],
+        profileImage: user.profileImage || '',
+        useProfileSpecificImages: user.useProfileSpecificImages ?? false,
+        contactFormEnabled: user.contactFormEnabled ?? true,
         isActive: user.isActive !== false,
       },
     };

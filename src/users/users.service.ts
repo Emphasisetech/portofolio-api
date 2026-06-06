@@ -258,7 +258,11 @@ export class UsersService {
 
   async updateSettings(
     id: string,
-    data: { profileImage?: string; useProfileSpecificImages?: boolean },
+    data: {
+      profileImage?: string;
+      useProfileSpecificImages?: boolean;
+      contactFormEnabled?: boolean;
+    },
   ): Promise<User | null> {
     return this.userModel
       .findByIdAndUpdate(id, { $set: data }, { new: true })

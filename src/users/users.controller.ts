@@ -36,6 +36,7 @@ export class UsersController {
       dashboards: [String(raw.role || 'USER').toLowerCase()],
       profileImage: raw.profileImage || '',
       useProfileSpecificImages: raw.useProfileSpecificImages ?? false,
+      contactFormEnabled: raw.contactFormEnabled ?? true,
       isActive: raw.isActive !== false,
     };
   }
@@ -54,10 +55,15 @@ export class UsersController {
   @Post('settings')
   async updateSettings(
     @Request() req,
-    @Body() body: { useProfileSpecificImages?: boolean },
+    @Body()
+    body: {
+      useProfileSpecificImages?: boolean;
+      contactFormEnabled?: boolean;
+    },
   ) {
     const user = await this.usersService.updateSettings(req.user.userId, {
       useProfileSpecificImages: body.useProfileSpecificImages,
+      contactFormEnabled: body.contactFormEnabled,
     });
     if (!user) throw new NotFoundException('User not found');
     return this.serializeUser(user);

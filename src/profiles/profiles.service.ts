@@ -117,7 +117,11 @@ export class ProfilesService {
       personalInfo.profileImage = accountImage;
     }
 
-    return { ...data, personalInfo };
+    return {
+      ...data,
+      personalInfo,
+      contactFormEnabled: user?.contactFormEnabled ?? true,
+    };
   }
 
   private async withResolvedProfileImages(profiles: Profile[]): Promise<any[]> {

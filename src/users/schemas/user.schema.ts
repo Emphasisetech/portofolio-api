@@ -11,7 +11,7 @@ export enum UserRole {
 
 @Schema({ timestamps: true })
 export class User extends Document {
-  @Prop({ required: true, unique: true,  type: String })
+  @Prop({ required: true, unique: true, type: String })
   username!: string;
 
   @Prop({ required: true, unique: true, type: String })
@@ -34,6 +34,9 @@ export class User extends Document {
 
   @Prop({ default: false, type: Boolean })
   useProfileSpecificImages!: boolean;
+
+  @Prop({ default: true, type: Boolean })
+  contactFormEnabled!: boolean;
 
   @Prop({ default: true, type: Boolean })
   isActive!: boolean;

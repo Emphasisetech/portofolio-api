@@ -13,6 +13,7 @@ import { MentorModule } from './mentor/mentor.module';
 import { PlansModule } from './plans/plans.module';
 import { JobsModule } from './jobs/jobs.module';
 import { LessonsModule } from './lessons/lessons.module';
+import { ContactMessagesModule } from './contact-messages/contact-messages.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { LessonsModule } from './lessons/lessons.module';
     PlansModule,
     JobsModule,
     LessonsModule,
+    ContactMessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
