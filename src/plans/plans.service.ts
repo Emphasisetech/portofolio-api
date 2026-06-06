@@ -11,10 +11,9 @@ import { Profile } from '../profiles/schemas/profile.schema';
 import { getProfileKind } from '../profiles/profile.utils';
 import {
   DEFAULT_PLAN_CATALOG,
-  PLAN_FEATURES,
-  PLAN_LABELS,
-  PLAN_LIMITS,
-  PRO_TEMPLATE_IDS,
+  TEMPLATE_PLAN_LABELS,
+  canUseTemplate,
+  getTemplateRequiredPlan,
   normalizePlan,
 } from './plans.constants';
 import {
@@ -120,7 +119,9 @@ export class PlansService implements OnModuleInit {
     return normalizePlan(user.plan);
   }
 
-  async getUsage(userId: string): Promise<{ resumes: number; websites: number }> {
+  async getUsage(
+    userId: string,
+  ): Promise<{ resumes: number; websites: number }> {
     const profiles = await this.profileModel
       .find({ userId: new Types.ObjectId(userId) })
       .select('profileKind templateId')
@@ -129,8 +130,7 @@ export class PlansService implements OnModuleInit {
     let resumes = 0;
     let websites = 0;
     for (const p of profiles) {
-      const kind =
-        p.profileKind || getProfileKind(p.templateId);
+      const kind = p.profileKind || getProfileKind(p.templateId);
       if (kind === 'website') websites += 1;
       else resumes += 1;
     }
@@ -237,15 +237,15 @@ export class PlansService implements OnModuleInit {
   async assertTemplateAllowed(
     userId: string,
     templateId: string,
-    profileId?: string,
   ): Promise<void> {
-    if (!PRO_TEMPLATE_IDS.has(templateId)) return;
-
     const plan = await this.getUserPlan(userId);
-    const features = await this.getFeatures(plan);
-    if (features.proTemplates) return;
+    if (canUseTemplate(plan, templateId)) return;
 
-    await this.assertFeature(userId, 'proTemplates');
+    const planData = await this.getPlanDefinition(plan);
+    const requiredPlan = getTemplateRequiredPlan(templateId);
+    throw new ForbiddenException(
+      `${TEMPLATE_PLAN_LABELS[requiredPlan]} plan required for this template. You are on ${planData.name}.`,
+    );
   }
 
   async setUserPlan(

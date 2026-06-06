@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Profile } from './schemas/profile.schema';
@@ -28,10 +32,15 @@ export class ProfilesService {
     return user.username;
   }
 
-  private async ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
+  private async ensureUniqueSlug(
+    baseSlug: string,
+    excludeId?: string,
+  ): Promise<string> {
     let slug = baseSlug.toLowerCase();
     let counter = 2;
-    const exclude = excludeId ? { _id: { $ne: new Types.ObjectId(excludeId) } } : {};
+    const exclude = excludeId
+      ? { _id: { $ne: new Types.ObjectId(excludeId) } }
+      : {};
 
     while (
       await this.profileModel
@@ -54,12 +63,21 @@ export class ProfilesService {
     return { [field]: new RegExp(`^${this.escapeRegex(value)}$`, 'i') };
   }
 
-  private async assignPublicSlug(profile: Profile, username: string): Promise<void> {
+  private async assignPublicSlug(
+    profile: Profile,
+    username: string,
+  ): Promise<void> {
     const base = buildPublicSlug(username, profile.title);
-    profile.publicSlug = await this.ensureUniqueSlug(base, profile._id?.toString());
+    profile.publicSlug = await this.ensureUniqueSlug(
+      base,
+      profile._id?.toString(),
+    );
   }
 
-  private async backfillSlugs(profiles: Profile[], userId: string): Promise<void> {
+  private async backfillSlugs(
+    profiles: Profile[],
+    userId: string,
+  ): Promise<void> {
     const username = await this.getUsername(userId);
     for (const profile of profiles) {
       if (!profile.publicSlug) {
@@ -69,7 +87,9 @@ export class ProfilesService {
     }
   }
 
-  private async getSourceProfileForCopy(userId: string): Promise<Profile | null> {
+  private async getSourceProfileForCopy(
+    userId: string,
+  ): Promise<Profile | null> {
     const defaultProfile = await this.profileModel
       .findOne({ userId: new Types.ObjectId(userId), isDefault: true })
       .exec();
@@ -81,7 +101,9 @@ export class ProfilesService {
       .exec();
   }
 
-  private async withResolvedProfileImage(profile: Profile | null): Promise<any> {
+  private async withResolvedProfileImage(
+    profile: Profile | null,
+  ): Promise<any> {
     if (!profile) return profile;
     const data = profile.toObject ? profile.toObject() : profile;
     const user = await this.userModel.findById(data.userId).exec();
@@ -99,7 +121,9 @@ export class ProfilesService {
   }
 
   private async withResolvedProfileImages(profiles: Profile[]): Promise<any[]> {
-    return Promise.all(profiles.map((profile) => this.withResolvedProfileImage(profile)));
+    return Promise.all(
+      profiles.map((profile) => this.withResolvedProfileImage(profile)),
+    );
   }
 
   async findByUserId(userId: string): Promise<Profile[]> {
@@ -158,7 +182,8 @@ export class ProfilesService {
   async createProfile(userId: string, title: string): Promise<Profile> {
     const username = await this.getUsername(userId);
     const source = await this.getSourceProfileForCopy(userId);
-    const kind = source?.profileKind || getProfileKind(source?.templateId) || 'resume';
+    const kind =
+      source?.profileKind || getProfileKind(source?.templateId) || 'resume';
     await this.plansService.assertCanAddProfile(userId, kind);
     const copied = source
       ? extractProfileContent(source)
@@ -236,7 +261,9 @@ export class ProfilesService {
       throw new NotFoundException('Published profile not found');
     }
 
-    await this.userModel.findByIdAndUpdate(profile.userId, { $inc: { views: 1 } }).exec();
+    await this.userModel
+      .findByIdAndUpdate(profile.userId, { $inc: { views: 1 } })
+      .exec();
     return this.withResolvedProfileImage(profile);
   }
 
@@ -269,7 +296,9 @@ export class ProfilesService {
         })
         .exec();
       if (!profile) throw new NotFoundException('Published profile not found');
-      await this.userModel.findByIdAndUpdate(user._id, { $inc: { views: 1 } }).exec();
+      await this.userModel
+        .findByIdAndUpdate(user._id, { $inc: { views: 1 } })
+        .exec();
       return this.withResolvedProfileImage(profile);
     }
 
@@ -284,12 +313,15 @@ export class ProfilesService {
     throw new NotFoundException('No published profile found for this user');
   }
 
-  async update(profileId: string, userId: string, updateData: any): Promise<Profile | null> {
+  async update(
+    profileId: string,
+    userId: string,
+    updateData: any,
+  ): Promise<Profile | null> {
     if (updateData.templateId) {
       await this.plansService.assertTemplateAllowed(
         userId,
         updateData.templateId,
-        profileId,
       );
       const newKind = getProfileKind(updateData.templateId);
       await this.plansService.assertCanSwitchToKind(userId, profileId, newKind);
@@ -318,7 +350,10 @@ export class ProfilesService {
 
     const profile = await this.profileModel
       .findOneAndUpdate(
-        { _id: new Types.ObjectId(profileId), userId: new Types.ObjectId(userId) },
+        {
+          _id: new Types.ObjectId(profileId),
+          userId: new Types.ObjectId(userId),
+        },
         { $set: updateData },
         { new: true },
       )
@@ -380,7 +415,10 @@ export class ProfilesService {
 
     const updated = await this.profileModel
       .findOneAndUpdate(
-        { _id: new Types.ObjectId(profileId), userId: new Types.ObjectId(userId) },
+        {
+          _id: new Types.ObjectId(profileId),
+          userId: new Types.ObjectId(userId),
+        },
         { $set: { isPublished, publicSlug: profile.publicSlug } },
         { new: true },
       )
@@ -405,10 +443,12 @@ export class ProfilesService {
       );
     }
 
-    const result = await this.profileModel.deleteOne({
-      _id: new Types.ObjectId(profileId),
-      userId: new Types.ObjectId(userId),
-    }).exec();
+    const result = await this.profileModel
+      .deleteOne({
+        _id: new Types.ObjectId(profileId),
+        userId: new Types.ObjectId(userId),
+      })
+      .exec();
 
     if (result.deletedCount === 0) {
       throw new NotFoundException('Profile not found');

@@ -5,6 +5,8 @@ export const WEBSITE_TEMPLATE_IDS = [
   'web-cyber',
   'web-cosmic',
   'web-sky',
+  'glassmorphism',
+  'stacknova',
 ];
 
 export type ProfileKind = 'website' | 'resume';
@@ -27,13 +29,15 @@ export const DEFAULT_SECTIONS = [
 ];
 
 export function slugifyTitle(title: string): string {
-  return (title || 'resume')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '') || 'resume';
+  return (
+    (title || 'resume')
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'resume'
+  );
 }
 
 export function buildPublicSlug(username: string, title: string): string {

@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main",
-    "start:dev": "nest start --watch"
+    "dev": "nest start --watch"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

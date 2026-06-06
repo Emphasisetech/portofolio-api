@@ -116,16 +116,54 @@ export const PRO_TEMPLATE_IDS = new Set([
   'resume-32',
   'resume-33',
   'resume-34',
-  'web-midnight',
+  'resume-35',
   'web-cyber',
   'web-cosmic',
   'web-sky',
+  'glassmorphism',
+  'stacknova',
 ]);
 
-export function normalizePlan(value?: string): any {
+/** Standard templates included from Creator upward. */
+export const CREATOR_TEMPLATE_IDS = new Set([
+  'resume-4',
+  'resume-5',
+  'resume-6',
+  'resume-7',
+  'resume-8',
+  'resume-9',
+  'resume-10',
+  'web-light',
+]);
+
+export const TEMPLATE_PLAN_LABELS: Record<SubscriptionPlan, string> = {
+  [SubscriptionPlan.FREE]: 'Free',
+  [SubscriptionPlan.CREATOR]: 'Creator',
+  [SubscriptionPlan.PRO]: 'Pro',
+};
+
+const PLAN_RANK: Record<SubscriptionPlan, number> = {
+  [SubscriptionPlan.FREE]: 0,
+  [SubscriptionPlan.CREATOR]: 1,
+  [SubscriptionPlan.PRO]: 2,
+};
+
+export function getTemplateRequiredPlan(templateId: string): SubscriptionPlan {
+  if (PRO_TEMPLATE_IDS.has(templateId)) return SubscriptionPlan.PRO;
+  if (CREATOR_TEMPLATE_IDS.has(templateId)) return SubscriptionPlan.CREATOR;
+  return SubscriptionPlan.FREE;
+}
+
+export function canUseTemplate(
+  plan: SubscriptionPlan,
+  templateId: string,
+): boolean {
+  return PLAN_RANK[plan] >= PLAN_RANK[getTemplateRequiredPlan(templateId)];
+}
+
+export function normalizePlan(value?: string): SubscriptionPlan {
   const upper = (value || '').toUpperCase();
-  if (upper === SubscriptionPlan.CREATOR) return SubscriptionPlan.CREATOR;
-  // if (upper === SubscriptionPlan.PRO) return SubscriptionPlan.PRO;
-  // return SubscriptionPlan.FREE;
-  return upper
+  if (upper === 'CREATOR') return SubscriptionPlan.CREATOR;
+  if (upper === 'PRO') return SubscriptionPlan.PRO;
+  return SubscriptionPlan.FREE;
 }
