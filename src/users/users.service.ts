@@ -189,7 +189,7 @@ export class UsersService {
     }
   }
 
-  async create(userData: CreateUserInput): Promise<User> {
+  private normalizeCreateInput(userData: CreateUserInput) {
     const username = String(userData.username || '')
       .trim()
       .toLowerCase();
@@ -204,6 +204,11 @@ export class UsersService {
         : undefined;
     const password = userData.password || '';
 
+    return { username, email, role, companyName, password };
+  }
+
+  async assertCanCreate(userData: CreateUserInput): Promise<void> {
+    const { username, email, password } = this.normalizeCreateInput(userData);
     this.validateUsername(username);
     this.validatePassword(password);
     this.validateEmailDomain(email);
@@ -218,6 +223,13 @@ export class UsersService {
     if (existingUser) {
       throw new ConflictException('Username or email already exists');
     }
+  }
+
+  async create(userData: CreateUserInput): Promise<User> {
+    const { username, email, role, companyName, password } =
+      this.normalizeCreateInput(userData);
+
+    await this.assertCanCreate(userData);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new this.userModel({
