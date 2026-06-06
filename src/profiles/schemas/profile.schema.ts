@@ -68,6 +68,15 @@ class Skill {
 }
 
 @Schema()
+class SocialLink {
+  @Prop()
+  name!: string;
+
+  @Prop()
+  link!: string;
+}
+
+@Schema()
 class Project {
   @Prop()
   title!: string;
@@ -104,6 +113,9 @@ export class Profile extends Document {
 
   @Prop({ type: [Skill] })
   skills: Skill[] = [];
+
+  @Prop({ type: [SocialLink] })
+  socialLinks: SocialLink[] = [];
 
   @Prop({ type: [Project] })
   projects: Project[] = [];

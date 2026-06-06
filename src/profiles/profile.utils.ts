@@ -7,6 +7,7 @@ export const WEBSITE_TEMPLATE_IDS = [
   'web-sky',
   'glassmorphism',
   'stacknova',
+  'stackcraft',
 ];
 
 export type ProfileKind = 'website' | 'resume';
@@ -57,6 +58,7 @@ export function extractProfileContent(profile: any) {
     experience: JSON.parse(JSON.stringify(profile.experience || [])),
     education: JSON.parse(JSON.stringify(profile.education || [])),
     skills: JSON.parse(JSON.stringify(profile.skills || [])),
+    socialLinks: JSON.parse(JSON.stringify(profile.socialLinks || [])),
     projects: JSON.parse(JSON.stringify(profile.projects || [])),
     templateId: profile.templateId || 'resume-1',
     layout: deepCloneLayout(profile.layout),

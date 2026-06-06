@@ -122,6 +122,7 @@ export const PRO_TEMPLATE_IDS = new Set([
   'web-sky',
   'glassmorphism',
   'stacknova',
+  'stackcraft',
 ]);
 
 /** Standard templates included from Creator upward. */
