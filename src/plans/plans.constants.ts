@@ -42,7 +42,7 @@ export const DEFAULT_PLAN_CATALOG: PlanCatalogItem[] = [
   {
     code: SubscriptionPlan.FREE,
     name: 'Starter',
-    price: '$0',
+    price: '₹0',
     period: '/month',
     description: 'Perfect for getting started',
     highlighted: false,
@@ -63,7 +63,7 @@ export const DEFAULT_PLAN_CATALOG: PlanCatalogItem[] = [
   {
     code: SubscriptionPlan.CREATOR,
     name: 'Creator',
-    price: '$12',
+    price: '₹12',
     period: '/month',
     description: 'For serious job seekers & freelancers',
     highlighted: true,
@@ -86,7 +86,7 @@ export const DEFAULT_PLAN_CATALOG: PlanCatalogItem[] = [
   {
     code: SubscriptionPlan.PRO,
     name: 'Pro',
-    price: '$24',
+    price: '₹24',
     period: '/month',
     description: 'Unlimited power for professionals',
     highlighted: false,
