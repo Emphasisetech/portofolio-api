@@ -6,6 +6,29 @@ export class ResendEmailService {
   constructor(private configService: ConfigService) {}
 
   async sendSignupOtp(email: string, otp: string): Promise<void> {
+    await this.sendOtpEmail({
+      email,
+      otp,
+      subject: 'Verify your Portfolio Builder account',
+      intro: 'Use this code to finish creating your account:',
+    });
+  }
+
+  async sendPasswordResetOtp(email: string, otp: string): Promise<void> {
+    await this.sendOtpEmail({
+      email,
+      otp,
+      subject: 'Reset your Portfolio Builder password',
+      intro: 'Use this code to reset your password:',
+    });
+  }
+
+  private async sendOtpEmail(params: {
+    email: string;
+    otp: string;
+    subject: string;
+    intro: string;
+  }): Promise<void> {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
     const from =
       this.configService.get<string>('RESEND_FROM_EMAIL') ||
@@ -25,13 +48,13 @@ export class ResendEmailService {
       },
       body: JSON.stringify({
         from,
-        to: [email],
-        subject: 'Verify your Portfolio Builder account',
+        to: [params.email],
+        subject: params.subject,
         html: `
           <div style="font-family:Arial,sans-serif;color:#0f172a">
             <h2>Your verification code</h2>
-            <p>Use this code to finish creating your account:</p>
-            <p style="font-size:28px;font-weight:700;letter-spacing:6px">${otp}</p>
+            <p>${params.intro}</p>
+            <p style="font-size:28px;font-weight:700;letter-spacing:6px">${params.otp}</p>
             <p>This code expires in 10 minutes.</p>
           </div>
         `,

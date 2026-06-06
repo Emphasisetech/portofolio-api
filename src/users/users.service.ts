@@ -331,6 +331,26 @@ export class UsersService {
     await user.save();
   }
 
+  async resetPasswordByEmail(
+    email: string,
+    newPassword: string,
+  ): Promise<void> {
+    this.validatePassword(newPassword, 'New password');
+
+    const user = await this.findByEmail(email);
+    if (!user?.password) {
+      throw new BadRequestException('Unable to reset password');
+    }
+
+    const newPasswordMatches = await bcrypt.compare(newPassword, user.password);
+    if (newPasswordMatches) {
+      throw new BadRequestException('New password must be different');
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+  }
+
   async findAll(): Promise<User[]> {
     return this.userModel.find().select('-password').exec();
   }

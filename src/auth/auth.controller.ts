@@ -24,6 +24,18 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Post('password/request-otp')
+  async requestPasswordResetOtp(@Body() data: any) {
+    return this.authService.requestPasswordResetOtp(data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('password/reset')
+  async resetPassword(@Body() data: any) {
+    return this.authService.resetPassword(data);
+  }
+
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginData: any) {
     const user = await this.authService.validateUser(

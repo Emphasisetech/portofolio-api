@@ -10,7 +10,10 @@ import { randomInt } from 'crypto';
 import { Model } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/schemas/user.schema';
-import { EmailVerification } from './schemas/email-verification.schema';
+import {
+  EmailVerification,
+  EmailVerificationPurpose,
+} from './schemas/email-verification.schema';
 import { ResendEmailService } from './resend-email.service';
 
 type RegisterData = {
@@ -20,6 +23,16 @@ type RegisterData = {
   role?: UserRole;
   companyName?: string;
   otp?: string;
+};
+
+type PasswordResetRequest = {
+  email?: string;
+};
+
+type PasswordResetData = {
+  email?: string;
+  otp?: string;
+  password?: string;
 };
 
 @Injectable()
@@ -89,41 +102,36 @@ export class AuthService {
     return String(randomInt(100000, 1000000));
   }
 
-  async requestSignupOtp(userData: RegisterData) {
-    const email = this.normalizeEmail(userData.email);
-    await this.usersService.assertCanCreate(userData);
-
+  private async createEmailVerification(
+    email: string,
+    purpose: EmailVerificationPurpose,
+  ): Promise<string> {
     const otp = this.generateOtp();
     const otpHash = await bcrypt.hash(otp, 10);
     const expiresAt = new Date(Date.now() + AuthService.OTP_TTL_MS);
 
     await this.emailVerificationModel
       .findOneAndUpdate(
-        { email },
-        { $set: { email, otpHash, expiresAt, attempts: 0 } },
+        { email, purpose },
+        { $set: { email, purpose, otpHash, expiresAt, attempts: 0 } },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .exec();
 
-    await this.resendEmailService.sendSignupOtp(email, otp);
-
-    return {
-      message: 'Verification code sent to your email',
-      email,
-      expiresInSeconds: Math.floor(AuthService.OTP_TTL_MS / 1000),
-    };
+    return otp;
   }
 
-  async register(userData: RegisterData) {
-    const email = this.normalizeEmail(userData.email);
-    const otp = String(userData.otp || '').trim();
-
+  private async verifyEmailOtp(
+    email: string,
+    otp: string,
+    purpose: EmailVerificationPurpose,
+  ): Promise<void> {
     if (!/^\d{6}$/.test(otp)) {
       throw new BadRequestException('A valid 6-digit email OTP is required');
     }
 
     const verification = await this.emailVerificationModel
-      .findOne({ email })
+      .findOne({ email, purpose })
       .exec();
 
     if (!verification || verification.expiresAt.getTime() < Date.now()) {
@@ -140,9 +148,79 @@ export class AuthService {
       await verification.save();
       throw new BadRequestException('Invalid verification code');
     }
+  }
+
+  async requestSignupOtp(userData: RegisterData) {
+    const email = this.normalizeEmail(userData.email);
+    await this.usersService.assertCanCreate(userData);
+
+    const otp = await this.createEmailVerification(
+      email,
+      EmailVerificationPurpose.SIGNUP,
+    );
+    await this.resendEmailService.sendSignupOtp(email, otp);
+
+    return {
+      message: 'Verification code sent to your email',
+      email,
+      expiresInSeconds: Math.floor(AuthService.OTP_TTL_MS / 1000),
+    };
+  }
+
+  async register(userData: RegisterData) {
+    const email = this.normalizeEmail(userData.email);
+    const otp = String(userData.otp || '').trim();
+
+    await this.verifyEmailOtp(email, otp, EmailVerificationPurpose.SIGNUP);
 
     const user = await this.usersService.create(userData);
-    await this.emailVerificationModel.deleteOne({ email }).exec();
+    await this.emailVerificationModel
+      .deleteOne({ email, purpose: EmailVerificationPurpose.SIGNUP })
+      .exec();
     return this.login(user);
+  }
+
+  async requestPasswordResetOtp(data: PasswordResetRequest) {
+    const email = this.normalizeEmail(data.email);
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('No account found with this email address');
+    }
+
+    if (user.isActive === false) {
+      throw new UnauthorizedException(
+        'Account is disabled. Contact an admin to activate it.',
+      );
+    }
+
+    const otp = await this.createEmailVerification(
+      email,
+      EmailVerificationPurpose.PASSWORD_RESET,
+    );
+    await this.resendEmailService.sendPasswordResetOtp(email, otp);
+
+    return {
+      message: 'Password reset code sent to your email',
+      email,
+      expiresInSeconds: Math.floor(AuthService.OTP_TTL_MS / 1000),
+    };
+  }
+
+  async resetPassword(data: PasswordResetData) {
+    const email = this.normalizeEmail(data.email);
+    const otp = String(data.otp || '').trim();
+
+    await this.verifyEmailOtp(
+      email,
+      otp,
+      EmailVerificationPurpose.PASSWORD_RESET,
+    );
+    await this.usersService.resetPasswordByEmail(email, data.password || '');
+    await this.emailVerificationModel
+      .deleteOne({ email, purpose: EmailVerificationPurpose.PASSWORD_RESET })
+      .exec();
+
+    return { message: 'Password updated successfully' };
   }
 }
